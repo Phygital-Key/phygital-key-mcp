@@ -95,6 +95,13 @@ try {
   const ident = mcp.getServerVersion();
   check("MCP server names itself phygital-key-mcp with its version", ident?.name === "phygital-key-mcp" && /^\d+\.\d+\.\d+$/.test(ident?.version ?? ""), JSON.stringify(ident));
   check("MCP lists exactly 6 tools, none can approve", JSON.stringify(tools) === JSON.stringify(["cancel_approval", "get_approval", "record_receipt", "request_approval", "request_standing_approval", "use_standing_approval"]), tools.join(","));
+  // Tool poisoning: what the AI reads (instructions, tool names, descriptions,
+  // schemas) is short, plain printable ASCII, with no links and no hidden text.
+  const said = JSON.stringify([mcp.getInstructions(), (await mcp.listTools()).tools]);
+  check("tool text is plain printable ASCII (no hidden or look-alike characters)", /^[\x20-\x7e]*$/.test(said));
+  const links = said.replaceAll("https://json-schema.org/draft/2020-12/schema", "").replace(/https:\/\/[a-z.]*example\.com/g, "");
+  check("tool text has no links (besides the JSON Schema id and example.com samples)", !/https?:\/\//i.test(links));
+  check("each tool description is short (under 300 characters)", (await mcp.listTools()).tools.every((t) => (t.description ?? "").length < 300));
   const early = await tool(mcp, "request_approval", { request: { type: "deploy", params: deploy }, aud: DEMO, level: "high" });
   check("no key enrolled: request refused", early.isError && /enroll/.test(early.error));
   const noToken = await fetch(GATE + "/api/enroll/begin", { method: "POST", headers: { "Content-Type": "application/json", Origin: GATE }, body: JSON.stringify({ token: "guess", name: "x" }) });
