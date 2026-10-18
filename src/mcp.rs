@@ -42,6 +42,9 @@ pub struct RequestArgs {
     pub aud: String,
     /// How strong the proof must be: "medium" (touch) or "high" (fingerprint, face or PIN).
     pub level: LevelArg,
+    /// Optional: your own P-256 public key (SubjectPublicKeyInfo DER, base64url). The approval is then bound to it: when you act, also send a proof signed with that key (header Phygital-Proof). A copy of the approval is useless to anyone else.
+    #[serde(default)]
+    pub agent_key: Option<String>,
 }
 
 /// Arguments for `get_approval`.
@@ -118,6 +121,9 @@ fn summary(v: &View, approval: Option<String>) -> Value {
         Status::Approved if v.standing.is_some() => {
             "Approved standing approval. For each action, call use_standing_approval with the exact request, then send both `approval` (header Phygital-Approval) and `use_token` (header Phygital-Use). It lasts until `exp` or until its uses run out."
         }
+        Status::Approved if v.agent_key_fingerprint.is_some() => {
+            "Approved, bound to your agent_key. Send `approval` (header Phygital-Approval) and a proof you sign with that key (header Phygital-Proof) with the action. It works once, before `exp`."
+        }
         Status::Approved => {
             "Approved. Send `approval` with the action to the service, in the Phygital-Approval header (or the field the service names). It works once, before `exp`."
         }
@@ -160,7 +166,7 @@ impl GateMcp {
             LevelArg::Medium => Level::Medium,
             LevelArg::High => Level::High,
         };
-        let view = match self.gate.create(args.request, &args.aud, level) {
+        let view = match self.gate.create_for_agent(args.request, &args.aud, level, args.agent_key) {
             Ok(v) => v,
             Err(e) => return fail(e),
         };

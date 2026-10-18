@@ -186,6 +186,47 @@ try {
   const replay = await demo("deploy", deploy, got.approval);
   check("replay is refused", replay.status === 403 && replay.body.error === "REPLAYED");
 
+  // --- Agent-bound approvals (pka.2): only the agent that asked can use the yes.
+  const b64u = (buf) => Buffer.from(buf).toString("base64url");
+  const agentPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
+  const otherPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
+  const agentKey = b64u(await crypto.subtle.exportKey("spki", agentPair.publicKey));
+  const proofFor = async (keys, claims, iat) => {
+    const h = b64u(Buffer.from('{"alg":"ES256","typ":"pka-proof+jwt"}'));
+    // Canonical form: keys in order, plain ASCII values.
+    const p = b64u(Buffer.from(JSON.stringify({ approval_id: claims.id, aud: claims.aud, iat, request_hash: claims.request_hash, v: "pka.proof.1" })));
+    const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keys.privateKey, Buffer.from(`${h}.${p}`));
+    return `${h}.${p}.${b64u(sig)}`;
+  };
+  const badKey = await tool(mcp, "request_approval", { request: { type: "deploy", params: deploy }, aud: DEMO, level: "high", agent_key: "AAAA" });
+  check("an agent_key that is not a P-256 key is refused", badKey.isError && /agent_key/.test(badKey.error), badKey.error);
+  const bReq = await tool(mcp, "request_approval", { request: { type: "deploy", params: { ...deploy, version: "2.5.0" } }, aud: DEMO, level: "high", agent_key: agentKey });
+  const bWait = tool(mcp, "get_approval", { id: bReq.id, wait_seconds: 30 });
+  await page.goto(bReq.approve_url);
+  await page.locator("#actions").waitFor({ state: "visible" });
+  check("the page says only the program that asked can use the approval", await page.locator("#bound-row").isVisible() && /program that asked/.test(await page.locator("#bound").innerText()));
+  await page.click("#approve");
+  await page.waitForFunction(() => document.getElementById("title").textContent === "Approved", null, { timeout: 15000 });
+  const bGot = await bWait;
+  const bClaims = JSON.parse(Buffer.from(bGot.approval, "base64url").toString()).claims;
+  check("the approval is pka.2 and carries the agent's key", bClaims.v === "pka.2" && bClaims.cnf?.key === agentKey && /Phygital-Proof/.test(bGot.next || ""));
+  const bAct = async (proof) => {
+    const headers = { "Content-Type": "application/json", "Phygital-Approval": bGot.approval };
+    if (proof) headers["Phygital-Proof"] = proof;
+    const res = await fetch(`${DEMO}/deploy`, { method: "POST", headers, body: JSON.stringify({ ...deploy, version: "2.5.0" }) });
+    return { status: res.status, body: await res.json() };
+  };
+  const stolen = await bAct();
+  check("a bound approval without the agent's proof is refused (a stolen copy is useless)", stolen.status === 403 && stolen.body.error === "PROOF_REQUIRED", JSON.stringify(stolen.body));
+  const wrong = await bAct(await proofFor(otherPair, bClaims, Math.floor(Date.now() / 1000)));
+  check("a proof signed by another key is refused", wrong.status === 403 && wrong.body.error === "BAD_PROOF", JSON.stringify(wrong.body));
+  const stale = await bAct(await proofFor(agentPair, bClaims, Math.floor(Date.now() / 1000) - 40));
+  check("a stale proof is refused", stale.status === 403 && stale.body.error === "BAD_PROOF", JSON.stringify(stale.body));
+  const right = await bAct(await proofFor(agentPair, bClaims, Math.floor(Date.now() / 1000)));
+  check("with the agent's own proof, the service acts", right.status === 200 && right.body.ok === true, right.status === 200 ? "" : JSON.stringify(right.body));
+  const again = await bAct(await proofFor(agentPair, bClaims, Math.floor(Date.now() / 1000)));
+  check("a bound approval still works only once", again.status === 403 && again.body.error === "REPLAYED");
+
   // --- Red team: everything an agent might try.
   const r2 = await tool(mcp, "request_approval", { request: { type: "deploy", params: deploy }, aud: DEMO, level: "high" });
   const w2 = tool(mcp, "get_approval", { id: r2.id, wait_seconds: 30 });
