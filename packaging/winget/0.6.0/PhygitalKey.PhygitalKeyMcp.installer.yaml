@@ -1,0 +1,13 @@
+PackageIdentifier: PhygitalKey.PhygitalKeyMcp
+PackageVersion: 0.6.0
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: phygital-key-mcp-v0.6.0-x86_64-pc-windows-msvc\phygital-key-mcp.exe
+    PortableCommandAlias: phygital-key-mcp
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Phygital-Key/phygital-key-mcp/releases/download/v0.6.0/phygital-key-mcp-v0.6.0-x86_64-pc-windows-msvc.zip
+    InstallerSha256: 0D29E3026EB69971B14A12C1DF2E1D06000C651C24C57964E82BE54182BE0C26
+ManifestType: installer
+ManifestVersion: 1.9.0
