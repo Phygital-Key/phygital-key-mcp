@@ -32,7 +32,7 @@
 <a href="#install">Install</a> ·
 <a href="#connect-your-ai-app">Connect your AI app</a> ·
 <a href="#the-six-tools">Tools</a> ·
-<a href="#the-shared-guides">Guides</a> ·
+<a href="#all-the-guides">Guides</a> ·
 <a href="docs/testing.md">Testing</a>
 </p>
 
@@ -132,20 +132,11 @@ When the AI app supports it, `request_approval` asks the app to open the approva
 
 For agent builders: [rules for AI agents](docs/agents.md), [tool reference](docs/tools.md) (every schema, result and error text), [prompt snippets](examples/agent-prompts.md), [things to ask your AI](docs/examples.md).
 
-## The shared guides
+## All the guides
 
-These guides live in the base repository, because they are the same for every Phygital Key product. They show commands with `phygital-key-mcp`.
+Shared guides live in the base repository: **[all the guides](https://github.com/Phygital-Key/phygital-key#all-the-guides)** (approving, keys, standing approvals, secure install, checking approvals in your service, security). Guides for one product (connecting AI apps, its agent tools, prompts) live in that product's repository.
 
-| Topic | Guide |
-|---|---|
-| Reading and deciding on the approval page | [Approving](https://github.com/Phygital-Key/phygital-key/blob/main/docs/approving.md) |
-| Adding, removing and checking keys | [Keys and devices](https://github.com/Phygital-Key/phygital-key/blob/main/docs/keys-and-devices.md), [key history](https://github.com/Phygital-Key/phygital-key/blob/main/docs/key-history.md) |
-| Saying yes once, with limits | [Standing approvals](https://github.com/Phygital-Key/phygital-key/blob/main/docs/standing-approvals.md), [revocations](https://github.com/Phygital-Key/phygital-key/blob/main/docs/revocations.md) |
-| Running the gate out of the AI's reach | [Secure install](https://github.com/Phygital-Key/phygital-key/blob/main/docs/secure-install.md), [updates](https://github.com/Phygital-Key/phygital-key/blob/main/docs/updates.md), [own server](https://github.com/Phygital-Key/phygital-key/blob/main/docs/own-server.md) |
-| Checking approvals in your service | [Integrate](https://github.com/Phygital-Key/phygital-key/blob/main/docs/integrate.md), [Rust](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-rust.md), [JavaScript](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-js.md), [command line](https://github.com/Phygital-Key/phygital-key/blob/main/docs/cli.md), [error codes](https://github.com/Phygital-Key/phygital-key/blob/main/docs/error-codes.md), [receipts](https://github.com/Phygital-Key/phygital-key/blob/main/docs/receipts.md) |
-| What it defends against, and what not | [Threat model](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md), [security reviews](https://github.com/Phygital-Key/phygital-key/blob/main/docs/security-reviews.md), [privacy](https://github.com/Phygital-Key/phygital-key/blob/main/docs/privacy.md) |
-| Every command, option, route and file | [Reference](https://github.com/Phygital-Key/phygital-key/blob/main/docs/reference.md), [troubleshooting](https://github.com/Phygital-Key/phygital-key/blob/main/docs/troubleshooting.md), [glossary](https://github.com/Phygital-Key/phygital-key/blob/main/docs/glossary.md) |
-| The format and how it works | [How it works](https://github.com/Phygital-Key/phygital-key/blob/main/docs/how-it-works.md), [spec](https://github.com/Phygital-Key/phygital-key/blob/main/docs/spec.md), [decisions](https://github.com/Phygital-Key/phygital-key/blob/main/docs/decisions.md) |
+This product's guides: [Connect your AI app](docs/connect-your-ai.md) · [MCP tools](docs/tools.md) · [Agents guide](docs/agents.md) · [Things to ask](docs/examples.md) · [Prompt snippets](examples/agent-prompts.md) · [Testing](docs/testing.md)
 
 ## This repository
 
