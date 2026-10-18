@@ -26,7 +26,7 @@ P_BIN=phygital-key-mcp
 P_ID=mcp
 P_REPO=Phygital-Key/phygital-key-mcp
 P_PORT=7468
-P_VERSION=v0.4.0
+P_VERSION=v0.5.0
 # END PRODUCT
 REPO="$P_REPO"
 [ -t 0 ] && [ -t 1 ] || { echo "Run this yourself, in a terminal."; exit 1; }
