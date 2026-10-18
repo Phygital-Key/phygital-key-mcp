@@ -67,6 +67,11 @@ jobs:
         env:
           PKA_BIN: ${{ github.workspace }}/target/release/phygital-key-mcp
         run: node run.mjs
+      - name: Abuse (floods, huge and slow requests)
+        working-directory: tests/e2e
+        env:
+          PKA_BIN: ${{ github.workspace }}/target/release/phygital-key-mcp
+        run: node abuse.mjs
 
   browsers:
     name: approval page in Firefox and WebKit
