@@ -7,7 +7,7 @@
 // Usage: PKA_BIN=path/to/phygital-key-mcp node run.mjs
 
 import { spawn, execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, cpSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import http from "node:http";
@@ -451,6 +451,29 @@ try {
   let auditOk = false;
   try { auditOk = execFileSync(BIN, args(["audit-check"])).toString().startsWith("audit log ok"); } catch { auditOk = false; }
   check("audit log chain is intact", auditOk);
+  // audit-check never reads "nothing happened" into a gate that has keys.
+  const cli = (h, extra) => {
+    try { return { code: 0, out: execFileSync(BIN, ["--home", h, "--port", String(PORT), ...extra], { stdio: ["ignore", "pipe", "pipe"] }).toString() }; }
+    catch (e) { return { code: e.status, out: String(e.stderr || "") + String(e.stdout || "") }; }
+  };
+  const noLog = mkdtempSync(join(tmpdir(), "pka-e2e-nolog-"));
+  cpSync(join(home, "keyring.json"), join(noLog, "keyring.json"));
+  const noLogRun = cli(noLog, ["audit-check"]);
+  check("audit-check fails when the audit log is gone but a key is enrolled", noLogRun.code === 1 && /a key is enrolled/.test(noLogRun.out), noLogRun.out.trim());
+  const badRing = mkdtempSync(join(tmpdir(), "pka-e2e-badring-"));
+  writeFileSync(join(badRing, "keyring.json"), "{ not a keyring");
+  const badRingRun = cli(badRing, ["audit-check"]);
+  check("audit-check fails on a damaged keyring", badRingRun.code === 1 && /damaged keyring/.test(badRingRun.out), badRingRun.out.trim());
+  // trust-service takes the key from a file with @file, like the other key options.
+  const trustHome = mkdtempSync(join(tmpdir(), "pka-e2e-trust-"));
+  writeFileSync(join(trustHome, "svc.key"), svc.receipt_public_key + "\n");
+  const trusted = cli(trustHome, ["trust-service", "--aud", "https://svc.example.com", "--key", "@" + join(trustHome, "svc.key")]);
+  const pinned = (() => { try { return JSON.parse(readFileSync(join(trustHome, "services.json"), "utf8")).services; } catch { return []; } })();
+  check("trust-service --key @file pins the key from the file", trusted.code === 0 && pinned.some((p) => p.aud === "https://svc.example.com" && p.receipt_public_key === svc.receipt_public_key), trusted.out.trim());
+  unlinkSync(join(trustHome, "svc.key"));
+  const missing = cli(trustHome, ["trust-service", "--aud", "https://other.example.com", "--key", "@" + join(trustHome, "svc.key")]);
+  check("trust-service --key @file refuses a missing file", missing.code !== 0, missing.out.trim());
+  for (const h of [noLog, badRing, trustHome]) rmSync(h, { recursive: true, force: true });
 
   await mcp.close();
 
@@ -485,6 +508,15 @@ try {
   }
   check("the 31st request in a minute is refused (flood limit)", firstRefused === 31, String(firstRefused));
   check("the gate still answers after the flood limit", (await fetch(`http://localhost:${PORT + 10}/api/status`)).status === 200);
+  // --- Waiting limit: at most 50 requests waiting for the person. 30 are waiting
+  // now; after the one-minute window, 20 more fit, and the next is refused.
+  await sleep(61000);
+  let accepted = 0, waitingRefusal = "";
+  for (let i = 0; i < 25 && !waitingRefusal; i++) {
+    const r = await tool(stdio, "request_approval", { request: { type: "deploy", params: { ...deploy, version: "9.1." + i } }, aud: DEMO, level: "high" });
+    if (r.isError) waitingRefusal = r.error; else accepted++;
+  }
+  check("the 51st waiting request is refused (waiting limit)", accepted === 20 && /are waiting/.test(waitingRefusal), `${accepted} accepted, then: ${waitingRefusal}`);
   await stdio.close();
 } catch (e) {
   check("no unexpected error", false, e.stack || String(e));
