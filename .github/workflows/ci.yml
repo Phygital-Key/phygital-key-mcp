@@ -68,6 +68,29 @@ jobs:
           PKA_BIN: ${{ github.workspace }}/target/release/phygital-key-mcp
         run: node run.mjs
 
+  browsers:
+    name: approval page in Firefox and WebKit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: cargo build --release --locked
+      - name: Install test browsers
+        working-directory: tests/e2e
+        run: |
+          npm ci --no-fund --no-audit
+          npx playwright install --with-deps firefox webkit
+      - name: Run
+        working-directory: tests/e2e
+        env:
+          PKA_BIN: ${{ github.workspace }}/target/release/phygital-key-mcp
+        run: node browsers.mjs
+
   secure-install:
     name: secure install (${{ matrix.os }})
     strategy:

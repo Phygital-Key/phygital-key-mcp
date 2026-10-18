@@ -4,7 +4,7 @@
   "type": "module",
   "description": "End-to-end and red-team tests: real browser with a virtual passkey, real MCP client, demo service.",
   "scripts": {
-    "test": "node run.mjs"
+    "test": "node run.mjs && node browsers.mjs"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
