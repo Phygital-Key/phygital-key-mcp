@@ -166,7 +166,10 @@ impl GateMcp {
             LevelArg::Medium => Level::Medium,
             LevelArg::High => Level::High,
         };
-        let view = match self.gate.create_for_agent(args.request, &args.aud, level, args.agent_key) {
+        let view = match self
+            .gate
+            .create_for_agent(args.request, &args.aud, level, args.agent_key)
+        {
             Ok(v) => v,
             Err(e) => return fail(e),
         };
