@@ -1,0 +1,112 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:   # also started by the base sync after it updates
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --locked
+
+  product-files:
+    name: files made from the base are up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: cargo build --release --locked
+      - name: Write them again from the base templates; nothing may change
+        run: |
+          target/release/phygital-key-mcp product-files --out .
+          git diff --exit-code
+
+  e2e:
+    name: end-to-end and red team
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: cargo build --release --locked
+      - name: Install test browser
+        working-directory: tests/e2e
+        run: |
+          npm ci --no-fund --no-audit
+          npx playwright install --with-deps chromium
+      - name: Run
+        working-directory: tests/e2e
+        env:
+          PKA_BIN: ${{ github.workspace }}/target/release/phygital-key-mcp
+        run: node run.mjs
+
+  secure-install:
+    name: secure install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: cargo build --release --locked
+      - name: Install as a separate user, then check it cannot be changed by this user
+        shell: bash
+        run: tests/secure-install.sh "$PWD/target/release/phygital-key-mcp"
+
+  container:
+    name: container image (build and start)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - run: cargo build --release --locked
+      - name: Build the image and start the gate in it
+        shell: bash
+        run: |
+          set -euo pipefail
+          ctx=packaging/container
+          mkdir -p "$ctx/bin/amd64" "$ctx/data"
+          install -m 0755 target/release/phygital-key-mcp "$ctx/bin/amd64/phygital-key-mcp"
+          cp NOTICE LICENSE "$ctx/"
+          docker build --platform linux/amd64 -t pk-ci "$ctx"
+          docker run --rm pk-ci --version
+          docker run -d --name pk -p 127.0.0.1:7468:7468 pk-ci
+          for _ in $(seq 1 30); do curl -fsS http://localhost:7468/api/status >/dev/null && break; sleep 1; done
+          curl -fsS http://localhost:7468/api/status
+          [ "$(docker inspect --format '{{.Config.User}}' pk-ci)" = 65532:65532 ] || { echo "image does not run as the nonroot user"; exit 1; }
+          docker exec pk phygital-key-mcp enroll | grep -q 'http://localhost:7468/enroll#token='
+          docker rm -f pk

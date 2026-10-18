@@ -1,0 +1,42 @@
+[package]
+name = "phygital-key-mcp"
+version = "0.4.0"
+edition = "2024"
+rust-version = "1.89"
+license = "Apache-2.0"
+repository = "https://github.com/Phygital-Key/phygital-key-mcp"
+authors = ["Phygital-Key and the Phygital Key contributors"]
+description = "Phygital Key for MCP: AI apps ask through MCP, a person approves the exact action with a passkey, and any service checks the signed yes offline."
+keywords = ["mcp", "webauthn", "passkey", "approval", "ai-agents"]
+categories = ["authentication", "command-line-utilities"]
+
+[[bin]]
+name = "phygital-key-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# The shared engine. Kept on the base's main branch; Cargo.lock pins the exact
+# commit, and the sync workflow moves it forward after the tests pass.
+phygital-key-gate = { git = "https://github.com/Phygital-Key/phygital-key", branch = "main" }
+phygital-key-verify = { git = "https://github.com/Phygital-Key/phygital-key", branch = "main" }
+rmcp = { version = "3.5", features = ["server", "macros", "schemars", "elicitation", "transport-io", "transport-streamable-http-server"] }
+schemars = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal", "io-std"] }
+url = "2"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio", "query"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

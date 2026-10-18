@@ -1,0 +1,62 @@
+name: sync base
+
+# Every day, move to the latest commit of the shared base (Phygital-Key/phygital-key).
+# The update is kept only if the tests and the end-to-end checks pass; then the
+# full CI runs on it (every OS, the secure install, the container).
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # push the updated Cargo.lock and the files made from the base
+      actions: write    # start the full CI on the result
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Take the latest base
+        id: up
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo update -p phygital-key-gate -p phygital-key-verify
+          cargo build --release --locked
+          bin=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          "target/release/$bin" product-files --out .
+          if git diff --quiet; then echo "changed=no" >> "$GITHUB_OUTPUT"; else echo "changed=yes" >> "$GITHUB_OUTPUT"; fi
+          echo "bin=$bin" >> "$GITHUB_OUTPUT"
+      - name: Tests
+        if: steps.up.outputs.changed == 'yes'
+        run: cargo test --locked
+      - name: End-to-end checks
+        if: steps.up.outputs.changed == 'yes'
+        working-directory: tests/e2e
+        env:
+          PKA_BIN: ${{ github.workspace }}/target/release/${{ steps.up.outputs.bin }}
+        run: |
+          npm ci --no-fund --no-audit
+          npx playwright install --with-deps chromium
+          node run.mjs
+      - name: Keep the update and run the full CI
+        if: steps.up.outputs.changed == 'yes'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          base=$(sed -n 's/.*phygital-key?branch=main#\([0-9a-f]\{12\}\).*/\1/p' Cargo.lock | head -1)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Update the base to ${base:-latest}"
+          git push origin HEAD:main
+          gh workflow run ci.yml --ref main
