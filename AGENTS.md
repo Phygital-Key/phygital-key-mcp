@@ -30,7 +30,7 @@ CHANGELOG.md, SECURITY.md, CONTRIBUTING.md
 AGENTS.md, CLAUDE.md             this file, and the pointer to it
 src/main.rs                      PRODUCT (name, bin, id, version, repo, port, about, release keys) and the Mcp adapter
 src/mcp.rs                       the six tools, their argument schemas, the `next` texts, INSTRUCTIONS, server info
-tests/e2e/run.mjs                111 end-to-end and red-team checks
+tests/e2e/run.mjs                124 end-to-end and red-team checks
 tests/e2e/browsers.mjs           the approval page in Firefox and WebKit (16 checks)
 tests/e2e/abuse.mjs              floods, huge and slow requests, idle connections (16 checks)
 tests/e2e/package.json, package-lock.json   pinned MCP SDK and Playwright
@@ -80,7 +80,7 @@ A change in the base reaches this product through the sync (next section), or at
 
 1. `cargo update -p phygital-key-gate -p phygital-key-verify` moves `Cargo.lock` to the base's latest `main` commit.
 2. It builds the release binary and runs `product-files --out .`. If nothing changed, it stops.
-3. It runs `cargo test --locked` and the 111 end-to-end checks.
+3. It runs `cargo test --locked` and the 124 end-to-end checks.
 4. Only if both pass, it commits (`Update the base to <commit>`), pushes to `main`, and starts the full CI (`gh workflow run ci.yml`), which adds every OS, the secure install and the container.
 
 A failing base change is never pushed here: the job stops before the commit.
@@ -116,7 +116,7 @@ cd tests/e2e && npm ci && npx playwright install chromium
 PKA_BIN=../../target/release/phygital-key-mcp node run.mjs
 ```
 
-It prints one `PASS` or `FAIL` line per check (111 checks) and exits non-zero on any failure. It starts its own gate on port 17468 and the demo service on 17469 (and stdio gates on 17478 and 17488), in a temporary data folder.
+It prints one `PASS` or `FAIL` line per check (124 checks) and exits non-zero on any failure. It starts its own gate on port 17468 and the demo service on 17469 (and stdio gates on 17478 and 17488), in a temporary data folder.
 
 `tests/secure-install.sh` runs in CI only (the `secure install` job on Linux and macOS). Do not run it on your own machine: it needs password-less sudo and installs a system service.
 

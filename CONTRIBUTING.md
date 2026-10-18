@@ -30,6 +30,6 @@ target/release/phygital-key-mcp product-files --out . && git diff --exit-code
 cd tests/e2e && npm ci && npx playwright install chromium && PKA_BIN=../../target/release/phygital-key-mcp node run.mjs
 ```
 
-The last line runs the 111 end-to-end checks. What each test covers and every CI job: [testing](docs/testing.md).
+The last line runs the 124 end-to-end checks. What each test covers and every CI job: [testing](docs/testing.md).
 
 Security problems go to [SECURITY.md](SECURITY.md), not to a public issue.

@@ -1,6 +1,6 @@
 # Testing
 
-How Phygital Key MCP is tested: the 111 end-to-end checks, the browser and abuse checks, the secure install test, the container check, the check that the generated files match the base, every CI job and the daily sync. It is for contributors and for anyone who wants to see what holds each guarantee. The engine's own tests (shared test vectors, Wycheproof, the SimpleWebAuthn cross-check, property tests, fuzzing, mutation testing, the JavaScript checker, the installer's release-list check, supply chain) run in the base: see [testing in the base](https://github.com/Phygital-Key/phygital-key/blob/main/docs/testing.md).
+How Phygital Key MCP is tested: the 124 end-to-end checks, the browser and abuse checks, the secure install test, the container check, the check that the generated files match the base, every CI job and the daily sync. It is for contributors and for anyone who wants to see what holds each guarantee. The engine's own tests (shared test vectors, Wycheproof, the SimpleWebAuthn cross-check, property tests, fuzzing, mutation testing, the JavaScript checker, the installer's release-list check, supply chain) run in the base: see [testing in the base](https://github.com/Phygital-Key/phygital-key/blob/main/docs/testing.md).
 
 **On this page:** [at a glance](#at-a-glance) · [end-to-end checks](#end-to-end-and-red-team-checks) · [Firefox and WebKit](#firefox-and-webkit) · [abuse](#abuse-checks) · [secure install](#secure-install-test) · [container](#container-check) · [generated files](#generated-files-check) · [CI](#ci) · [the sync](#the-daily-sync)
 
@@ -8,10 +8,10 @@ How Phygital Key MCP is tested: the 111 end-to-end checks, the browser and abuse
 
 | Suite | What | Where it runs |
 |---|---|---|
-| End to end and red team | 111 checks: release binary, Chromium with a virtual passkey, the official MCP TypeScript SDK, the demo service | CI on every push and pull request; the daily sync |
+| End to end and red team | 124 checks: release binary, Chromium with a virtual passkey, the official MCP TypeScript SDK, the demo service | CI on every push and pull request; the daily sync |
 | Firefox and WebKit | 16 checks: the approval page in Firefox and Safari's engine, each with its own gate | CI |
 | Abuse | 16 checks: floods, huge and slow requests, idle connections, against a live gate | CI |
-| Secure install | 34 checks on Linux, 32 on macOS: installed for real as its own system user, then attacked as the user | CI, Linux and macOS |
+| Secure install | 36 checks on Linux, 32 on macOS: installed for real as its own system user, then attacked as the user | CI, Linux and macOS |
 | Workflows | zizmor on `.github/workflows` | CI |
 | Container | builds the image, starts the gate, checks the user and enrollment | CI |
 | Generated files | `product-files` output must equal the committed files | CI |
@@ -27,7 +27,7 @@ cd tests/e2e && npm ci && npx playwright install chromium
 PKA_BIN=../../target/release/phygital-key-mcp node run.mjs
 ```
 
-It starts its own gate on port 17468 and the demo service on 17469 (and stdio gates on 17478 and 17488), in a temporary data folder. It prints one `PASS` or `FAIL` line per check and `111 passed, 0 failed` at the end, and exits non-zero on any failure.
+It starts its own gate on port 17468 and the demo service on 17469 (and stdio gates on 17478 and 17488), in a temporary data folder. It prints one `PASS` or `FAIL` line per check and `124 passed, 0 failed` at the end, and exits non-zero on any failure.
 
 The checks, grouped by theme (each name is the exact text the suite prints):
 
@@ -41,9 +41,10 @@ The checks, grouped by theme (each name is the exact text the suite prints):
 | Request rules | 7 | Floats, requests without `{type, params}`, a KELVIN SIGN look-alike (not NFC), an audience with invisible characters, the gate's own audience and too deep nesting are refused before the person sees anything; the claims cannot be swapped while the person signs. |
 | Web protections | 9 | The MCP endpoint refuses calls from web pages; no CORS on localhost; a wrong `Host` (DNS rebinding) gets 421; a POST from another origin is refused; strict CSP; fonts served by the gate itself; nothing loaded from another site; `no-store` and `nosniff`. |
 | Key changes | 13 | A second key is trusted only after the first key approves it; the signed key list checks out from the command line; a key slipped in without a signature, an older copy (rollback) and a list signed on another gate are caught; a removal needs approval, cannot be doubled, and the last key cannot be removed; key cards and history are published at `/.well-known`. |
-| Command line and audit log | 4 | `verify` accepts a valid approval, refuses its second use and a changed request (exit code 1); the audit log chain is intact. |
+| Command line and audit log | 8 | `verify` accepts a valid approval, refuses its second use and a changed request (exit code 1); the audit log chain is intact; `audit-check` fails when the log is gone but a key is enrolled, and on a damaged keyring; `trust-service --key @file` pins the key from the file and refuses a missing file. |
+| Agent-bound approvals | 8 | An `agent_key` that is not a P-256 key is refused; the page says only the holder of that key can use the approval; the approval is `pka.2` with the agent's key; without the agent's proof it is refused (a stolen copy is useless), with a proof by another key or a stale proof too; with the agent's own proof the service acts, once. |
 | stdio mode | 4 | It stops cleanly on SIGTERM; it never prints an enrollment link; `request_approval` works and the approval page is served. |
-| Flood limit | 2 | The 31st request in a minute is refused, and the gate still answers. |
+| Flood and waiting limits | 3 | The 31st request in a minute is refused, and the gate still answers; after the minute, the 51st waiting request is refused. |
 
 ## Firefox and WebKit
 
@@ -82,7 +83,7 @@ PKA_BIN=../../target/release/phygital-key-mcp node abuse.mjs
 tests/secure-install.sh "$PWD/target/release/phygital-key-mcp"
 ```
 
-Its checks, in order (34 on Linux, 32 on macOS):
+Its checks, in order (36 on Linux, 32 on macOS):
 
 - [x] It refuses a relative `--binary`, a binary the user could have changed, and an address another program holds.
 - [x] The gate answers, and only the gate user listens (IPv4 and IPv6); it may open 8192 files.
@@ -141,7 +142,7 @@ flowchart LR
     A["cargo update: latest base commit"] --> B["build, product-files"]
     B -->|"nothing changed"| X["stop"]
     B -->|"changed"| C["cargo test"]
-    C --> D["111 end-to-end checks"]
+    C --> D["124 end-to-end checks"]
     D -->|"all pass"| E["commit and push to main"]
     E --> F["start the full CI"]
     C -->|"fail"| X2["stop, nothing pushed"]
