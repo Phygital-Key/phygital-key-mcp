@@ -56,7 +56,10 @@ impl Adapter for Mcp {
                 "  MCP endpoint    {o}/mcp  (needs header  Authorization: Bearer {t})\n  Claude Code:    claude mcp add --transport http phygital-key-mcp {o}/mcp --header \"Authorization: Bearer {t}\"",
                 o = s.origin
             ),
-            None => format!("  MCP endpoint    {}/mcp  (open: no access token)", s.origin),
+            None => format!(
+                "  MCP endpoint    {}/mcp  (open: no access token)",
+                s.origin
+            ),
         }
     }
 

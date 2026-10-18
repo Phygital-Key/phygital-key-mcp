@@ -117,6 +117,8 @@ jobs:
             dist/phygital-key-mcp-*
             dist/release.txt
             dist/release.txt.sig
+            src/install.sh
+            src/install-service.sh
           generate_release_notes: true
 
   container:
