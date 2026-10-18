@@ -18,7 +18,7 @@
 
 <p align="center">
 <a href="https://github.com/Phygital-Key/phygital-key/blob/main/docs/webauthn.md"><img src="https://img.shields.io/badge/WebAuthn-ES256%20%C2%B7%20P--256-FF6B5A" alt="WebAuthn, ES256 on P-256"></a>
-<a href="docs/testing.md"><img src="https://img.shields.io/badge/end--to--end-108%20checks-26D0F2" alt="108 end-to-end checks"></a>
+<a href="docs/testing.md"><img src="https://img.shields.io/badge/end--to--end-111%20checks-26D0F2" alt="111 end-to-end checks"></a>
 <a href="https://github.com/Phygital-Key/phygital-key/blob/main/docs/secure-install.md"><img src="https://img.shields.io/badge/secure%20install-macOS%20%C2%B7%20Linux-555" alt="Secure install on macOS and Linux"></a>
 <a href="https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md"><img src="https://img.shields.io/badge/status-pre--audit-FF6B5A" alt="Status: pre-audit"></a>
 <a href="https://github.com/Phygital-Key/phygital-key/blob/main/docs/updates.md"><img src="https://img.shields.io/badge/releases-signed-26D0F2" alt="Signed releases"></a>
@@ -119,11 +119,11 @@ The approval page is built by the gate from the canonical request, never from te
 | Anywhere with Rust | `cargo install --locked --git https://github.com/Phygital-Key/phygital-key-mcp phygital-key-mcp` |
 | Server (Docker) | `docker run -d --name phygital-key-mcp -p 127.0.0.1:7468:7468 -v phygital-key-mcp:/data ghcr.io/phygital-key/phygital-key-mcp:latest` |
 | Secure install (macOS, Linux) | See [out of the AI's reach](#out-of-the-ais-reach) |
-| Manual | Download from [Releases](https://github.com/Phygital-Key/phygital-key-mcp/releases) (each archive has a `.sha256`, and `release.txt` lists every SHA-256, signed in `release.txt.sig`) |
+| Manual | Download from [Releases](https://github.com/Phygital-Key/phygital-key-mcp/releases) (each archive has a `.sha256`, and the signed lists `release.txt` and `release2.txt` give every SHA-256) |
 
 The first release under this name is v0.4.0: release files for Linux, macOS and Windows, the public container image `ghcr.io/phygital-key/phygital-key-mcp` (`linux/amd64`, `linux/arm64`), the Homebrew formula and the Scoop manifest.
 
-The script downloads the latest release for your machine, checks that its file list (`release.txt`) is signed by a release key pinned in the script and that the download matches its SHA-256, then writes only `~/.local/bin/phygital-key-mcp`. It needs `curl`, `tar` and `openssl`. Update later with `phygital-key-mcp update`.
+The script downloads the latest release for your machine, checks that its file list (`release2.txt`) is signed by a release key pinned in the script and still in date, and that the download matches its SHA-256, then writes only `~/.local/bin/phygital-key-mcp`. It needs `curl`, `tar` and `openssl`. Update later with `phygital-key-mcp update`.
 
 The container runs `phygital-key-mcp --bind 0.0.0.0 serve` as user `65532` with its data in `/data` (`PHYGITAL_KEY_MCP_HOME=/data`). Add your key with `docker exec -it phygital-key-mcp phygital-key-mcp enroll` and get the access token with `docker exec -it phygital-key-mcp phygital-key-mcp token`. Publish the port on `127.0.0.1` only, or put a TLS proxy in front and pass `--origin https://your.host` ([own server](https://github.com/Phygital-Key/phygital-key/blob/main/docs/own-server.md)).
 
@@ -297,7 +297,7 @@ Details, every folder and every refusal: [secure install](https://github.com/Phy
 
 ### Signed automatic updates
 
-The secure install updates itself once a day, and installs a release only if its file list (`release.txt`) is signed with ECDSA P-256 by a release key pinned in this program and its installers, and it is newer than the installed version. The signing key is a secret of this repository's GitHub environment `release`, which only a release run from a `v*` tag can use. The update waits while a standing approval is active (up to 7 days), and if the new gate does not start and pass its checks, the previous program comes back. Root runs with a clean environment, so your `~/.curlrc` and `PATH` are never used.
+The secure install updates itself once a day, and installs a release only if its file list (`release2.txt`) is signed by the release keys pinned in this program and its installers (ECDSA P-256, plus ML-DSA-65 once that key is made), still in date and not older than one seen before, and it is newer than the installed version. The signing key is a secret of this repository's GitHub environment `release`, which only a release run from a `v*` tag can use. The update waits while a standing approval is active (up to 7 days), and if the new gate does not start and pass its checks, the previous program comes back. Root runs with a clean environment, so your `~/.curlrc` and `PATH` are never used.
 
 `phygital-key-mcp-admin status` shows the last result, `phygital-key-mcp-admin update` updates now, and `--no-auto-update` turns it off. How the channel works: [the update channel](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md#the-update-channel). Every way to update: [updates](https://github.com/Phygital-Key/phygital-key/blob/main/docs/updates.md).
 
@@ -305,11 +305,11 @@ The secure install updates itself once a day, and installs a release only if its
 
 | Layer | Where | What |
 |---|---|---|
-| End to end and red team | This repository | 108 checks with the release binary, a real Chromium with a virtual passkey, the official MCP TypeScript SDK and the demo service, including attacks: changed requests, prompt injection, forged signatures, replays, DNS rebinding, key rollback |
-| Secure install | This repository | 30 checks: installed for real on macOS and Linux in CI, then attacked as the user; update job, signature refusal, a planted `~/.curlrc` and `PATH`, and switch-back |
+| End to end and red team | This repository | 111 checks with the release binary, a real Chromium with a virtual passkey, the official MCP TypeScript SDK and the demo service, including attacks: changed requests, prompt injection, forged signatures, replays, DNS rebinding, key rollback |
+| Secure install | This repository | 34 checks on Linux, 32 on macOS: installed for real in CI, then attacked as the user; update job (started by systemd and launchd), signature refusal, a planted `~/.curlrc` and `PATH`, switch-back and the sandbox score |
 | Container | This repository | Builds the image, starts the gate, checks the user `65532` and enrollment |
 | Generated files | This repository | The files made from the base's templates must equal the committed ones |
-| Shared test vectors | Base | 123 cases that the Rust and JavaScript checkers must both pass, plus property tests, fuzzing and mutation testing |
+| Shared test vectors | Base | 123 cases that the Rust and JavaScript checkers must both pass, plus Google's Wycheproof cases, a SimpleWebAuthn cross-check, property tests, fuzzing and mutation testing |
 | Security reviews | Base | 8 independent AI security reviews, every finding fixed or documented as a limit |
 
 CI runs on every push on Linux, macOS and Windows, and again after each daily base update. Job by job: [testing](docs/testing.md). The engine's tests: [testing in the base](https://github.com/Phygital-Key/phygital-key/blob/main/docs/testing.md). Found a problem? [Report it privately](SECURITY.md).
@@ -348,14 +348,14 @@ This product's guides: [Connect your AI app](docs/connect-your-ai.md) · [MCP to
 |---|---|
 | [`src/main.rs`](src/main.rs) | The product: its name, program, port and release channel, and the MCP adapter (endpoint `/mcp`, stdio mode) |
 | [`src/mcp.rs`](src/mcp.rs) | The six MCP tools and the instructions the server sends to every client |
-| [`tests/e2e/`](tests/e2e) | 108 end-to-end and red-team checks: release binary, Chromium with a virtual passkey, the official MCP SDK, the demo service |
+| [`tests/e2e/`](tests/e2e) | 111 end-to-end and red-team checks: release binary, Chromium with a virtual passkey, the official MCP SDK, the demo service |
 | [`docs/`](docs) | The MCP guides: [connect your AI](docs/connect-your-ai.md), [tools](docs/tools.md), [agents](docs/agents.md), [examples](docs/examples.md), [testing](docs/testing.md) |
 | [`examples/`](examples) | [Prompt snippets](examples/agent-prompts.md) for your agent's instructions |
 | [`packaging/container/`](packaging/container) | The container image |
 | [`release-keys.pem`](release-keys.pem) | The pinned public release keys that every update and installer checks against |
 | `install.sh`, `install-service.sh`, `tests/secure-install.sh`, `scripts/` | Made from the base's templates for this product with `phygital-key-mcp product-files`. Never edited by hand: CI fails if they differ. See [AGENTS.md](AGENTS.md) |
 
-Everything else (the approval page, keys, standing approvals, receipts, audit log, secure install, signed updates, the verifier) comes from the base, [Phygital-Key/phygital-key](https://github.com/Phygital-Key/phygital-key). Every day the `sync-base` workflow moves this product to the base's latest commit, keeps it only if the tests and the 108 end-to-end checks pass, then pushes it and starts the full CI. How the base and the products fit: [architecture](https://github.com/Phygital-Key/phygital-key/blob/main/docs/architecture.md#the-base-and-the-products).
+Everything else (the approval page, keys, standing approvals, receipts, audit log, secure install, signed updates, the verifier) comes from the base, [Phygital-Key/phygital-key](https://github.com/Phygital-Key/phygital-key). Every day the `sync-base` workflow moves this product to the base's latest commit, keeps it only if the tests and the 111 end-to-end checks pass, then pushes it and starts the full CI. How the base and the products fit: [architecture](https://github.com/Phygital-Key/phygital-key/blob/main/docs/architecture.md#the-base-and-the-products).
 
 Changes: [CHANGELOG.md](CHANGELOG.md). Security problems: [SECURITY.md](SECURITY.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -1,15 +1,18 @@
 # Testing
 
-How Phygital Key MCP is tested: the 108 end-to-end checks, the secure install test, the container check, the check that the generated files match the base, every CI job and the daily sync. It is for contributors and for anyone who wants to see what holds each guarantee. The engine's own tests (shared test vectors, property tests, fuzzing, mutation testing, the JavaScript checker, supply chain) run in the base: see [testing in the base](https://github.com/Phygital-Key/phygital-key/blob/main/docs/testing.md).
+How Phygital Key MCP is tested: the 111 end-to-end checks, the browser and abuse checks, the secure install test, the container check, the check that the generated files match the base, every CI job and the daily sync. It is for contributors and for anyone who wants to see what holds each guarantee. The engine's own tests (shared test vectors, Wycheproof, the SimpleWebAuthn cross-check, property tests, fuzzing, mutation testing, the JavaScript checker, the installer's release-list check, supply chain) run in the base: see [testing in the base](https://github.com/Phygital-Key/phygital-key/blob/main/docs/testing.md).
 
-**On this page:** [at a glance](#at-a-glance) · [end-to-end checks](#end-to-end-and-red-team-checks) · [secure install](#secure-install-test) · [container](#container-check) · [generated files](#generated-files-check) · [CI](#ci) · [the sync](#the-daily-sync)
+**On this page:** [at a glance](#at-a-glance) · [end-to-end checks](#end-to-end-and-red-team-checks) · [Firefox and WebKit](#firefox-and-webkit) · [abuse](#abuse-checks) · [secure install](#secure-install-test) · [container](#container-check) · [generated files](#generated-files-check) · [CI](#ci) · [the sync](#the-daily-sync)
 
 ## At a glance
 
 | Suite | What | Where it runs |
 |---|---|---|
-| End to end and red team | 108 checks: release binary, Chromium with a virtual passkey, the official MCP TypeScript SDK, the demo service | CI on every push and pull request; the daily sync |
-| Secure install | 30 checks: installed for real as its own system user, then attacked as the user | CI, Linux and macOS |
+| End to end and red team | 111 checks: release binary, Chromium with a virtual passkey, the official MCP TypeScript SDK, the demo service | CI on every push and pull request; the daily sync |
+| Firefox and WebKit | 16 checks: the approval page in Firefox and Safari's engine, each with its own gate | CI |
+| Abuse | 16 checks: floods, huge and slow requests, idle connections, against a live gate | CI |
+| Secure install | 34 checks on Linux, 32 on macOS: installed for real as its own system user, then attacked as the user | CI, Linux and macOS |
+| Workflows | zizmor on `.github/workflows` | CI |
 | Container | builds the image, starts the gate, checks the user and enrollment | CI |
 | Generated files | `product-files` output must equal the committed files | CI |
 | Build and lint | `cargo fmt`, `cargo clippy`, `cargo test` (the product crate has no unit tests of its own today, so this builds and runs the doc and test targets; the engine's tests run in the base) | CI, Linux, macOS and Windows |
@@ -24,13 +27,13 @@ cd tests/e2e && npm ci && npx playwright install chromium
 PKA_BIN=../../target/release/phygital-key-mcp node run.mjs
 ```
 
-It starts its own gate on port 17468 and the demo service on 17469 (and stdio gates on 17478 and 17488), in a temporary data folder. It prints one `PASS` or `FAIL` line per check and `108 passed, 0 failed` at the end, and exits non-zero on any failure.
+It starts its own gate on port 17468 and the demo service on 17469 (and stdio gates on 17478 and 17488), in a temporary data folder. It prints one `PASS` or `FAIL` line per check and `111 passed, 0 failed` at the end, and exits non-zero on any failure.
 
 The checks, grouped by theme (each name is the exact text the suite prints):
 
 | Theme | Checks | What they prove |
 |---|:-:|---|
-| Before any key | 6 | The MCP endpoint refuses a missing or wrong access token; the server names itself `phygital-key-mcp` with its version; it lists exactly the 6 tools; requests are refused while no key is enrolled; enrollment needs the token from the command line. |
+| Before any key | 9 | The MCP endpoint refuses a missing or wrong access token; the server names itself `phygital-key-mcp` with its version; it lists exactly the 6 tools; what the AI reads (instructions, tool names, descriptions and schemas) is plain printable ASCII with no hidden or look-alike characters, has no links besides the JSON Schema id and `example.com` samples, and each description is under 300 characters; requests are refused while no key is enrolled; enrollment needs the token from the command line. |
 | Enrolling the first key | 6 | The token leaves the address bar; the first key is not trusted until it signs itself; the root fingerprint is shown; an enrollment link works once. |
 | The normal flow | 15 | `request_approval` returns an id and link; the status is pending until the person acts; the service refuses without an approval; `get_approval` wakes up with the approval and the key's name; the service acts once and signs a receipt; the gate records only a receipt the service really signed, once; the page shows "the service reported: done"; a replay is refused. |
 | What an agent might try | 16 | A changed version, another action and an extra field give `REQUEST_MISMATCH`; one changed character is refused; `medium` for a `high` action gives `ASSURANCE_TOO_LOW`; another audience gives `WRONG_AUDIENCE`; prompt injection in params changes nothing and is shown as plain data; a forged signature sent to the gate is refused; a deny reaches the agent with no approval and can never be approved later; cancel works. |
@@ -42,6 +45,35 @@ The checks, grouped by theme (each name is the exact text the suite prints):
 | stdio mode | 4 | It stops cleanly on SIGTERM; it never prints an enrollment link; `request_approval` works and the approval page is served. |
 | Flood limit | 2 | The 31st request in a minute is refused, and the gate still answers. |
 
+## Firefox and WebKit
+
+`tests/e2e/browsers.mjs` gives Firefox and WebKit (Safari's engine) each its own gate and walks the main path: enroll a key, confirm it, approve a deploy (the demo service acts once, then refuses the replay), and deny a message. Any page error or console error, such as a blocked script or a CSP violation, fails the run.
+
+```bash
+cd tests/e2e && npx playwright install firefox webkit
+PKA_BIN=../../target/release/phygital-key-mcp node browsers.mjs
+```
+
+The passkey is Playwright's virtual authenticator (`browserContext.credentials`), which stands in for `navigator.credentials` in the page. So this checks the page, its scripts and styles and the gate in those engines, not each browser's own WebAuthn code; `run.mjs` covers Chromium's. Gates on ports 17520 and 17530.
+
+## Abuse checks
+
+`tests/e2e/abuse.mjs` runs against a live gate (`serve`, port 17540) and checks after each case that the gate still answers:
+
+| Case | Must hold |
+|---|---|
+| A 10 MB body to `/api/enroll/begin` and to `/mcp` | Refused (413), and without the token 401 |
+| 50,000-deep JSON to `/mcp` | Refused, no crash |
+| A 1 MB header, 2000 headers, random bytes | 431, 431, 400 |
+| 200 idle or half-sent connections | The gate answers meanwhile and closes all of them after 10 seconds |
+| 2000 status requests, 100 at a time | All answered |
+| Long, traversal and NUL paths | 4xx |
+| All of the above | Memory stays under 200 MB |
+
+```bash
+PKA_BIN=../../target/release/phygital-key-mcp node abuse.mjs
+```
+
 ## Secure install test
 
 `tests/secure-install.sh` (generated from the base's template, see [AGENTS.md](../AGENTS.md#files-made-from-the-base)) installs the product for real as its own system user, with launchd on macOS and systemd on Linux, and then attacks it as the user. It needs password-less sudo, so it runs only in CI:
@@ -50,16 +82,18 @@ The checks, grouped by theme (each name is the exact text the suite prints):
 tests/secure-install.sh "$PWD/target/release/phygital-key-mcp"
 ```
 
-Its 30 checks, in order:
+Its checks, in order (34 on Linux, 32 on macOS):
 
 - [x] It refuses a relative `--binary`, a binary the user could have changed, and an address another program holds.
-- [x] The gate answers, and only the gate user listens (IPv4 and IPv6).
+- [x] The gate answers, and only the gate user listens (IPv4 and IPv6); it may open 8192 files.
 - [x] The program is owned by root; this user cannot change the program, read the data folder or write the keyring.
 - [x] `phygital-key-mcp-admin status` confirms the listener, and the admin helper makes an enrollment link.
 - [x] No enrollment link or token appears in the gate log.
 - [x] The agent endpoint (`/mcp`) refuses calls without the token and accepts it, with `Bearer` in any case.
 - [x] Installing again (an update) works; the daily update job is installed, owned by root, and on by default.
 - [x] A release list signed by an unknown key is refused; the update job leaves the gate running unless a newer signed release exists, and records its result.
+- [x] The daily update job runs when its service manager starts it (`systemctl start`, `launchctl kickstart`).
+- [x] Linux: `systemd-analyze security` keeps the gate service at OK (4.9 or less) and the root update service at MEDIUM (6.9 or less).
 - [x] Root ignores the user's `~/.curlrc` and programs early in the user's `PATH`.
 - [x] A failed update switches back to the previous program.
 - [x] `--no-auto-update` removes the job, the choice is kept on later installs, and `--auto-update` turns it back on.
@@ -90,7 +124,9 @@ The CI job `files made from the base are up to date` builds the release binary, 
 |---|---|
 | test (Linux, macOS, Windows) | `cargo fmt --all --check`, `cargo clippy --all-targets --locked -- -D warnings`, `cargo test --locked` |
 | files made from the base are up to date | `cargo build --release --locked`, `product-files --out .`, `git diff --exit-code` |
-| end-to-end and red team | release build, Node 24, `npm ci --no-fund --no-audit`, `npx playwright install --with-deps chromium`, `node run.mjs` |
+| end-to-end and red team | release build, Node 24, `npm ci --no-fund --no-audit`, `npx playwright install --with-deps chromium`, `node run.mjs`, then `node abuse.mjs` |
+| approval page in Firefox and WebKit | release build, Node 24, `npx playwright install --with-deps firefox webkit`, `node browsers.mjs` |
+| workflows (zizmor) | `pipx run zizmor==1.31.1 --offline .` |
 | secure install (Linux, macOS) | release build, `tests/secure-install.sh` with that binary |
 | container image (build and start) | release build, `docker build`, the four steps above |
 
@@ -105,7 +141,7 @@ flowchart LR
     A["cargo update: latest base commit"] --> B["build, product-files"]
     B -->|"nothing changed"| X["stop"]
     B -->|"changed"| C["cargo test"]
-    C --> D["108 end-to-end checks"]
+    C --> D["111 end-to-end checks"]
     D -->|"all pass"| E["commit and push to main"]
     E --> F["start the full CI"]
     C -->|"fail"| X2["stop, nothing pushed"]
