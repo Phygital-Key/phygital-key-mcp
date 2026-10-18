@@ -16,7 +16,7 @@ P_BIN=phygital-key-mcp
 P_ID=mcp
 P_REPO=Phygital-Key/phygital-key-mcp
 P_PORT=7468
-P_VERSION=v0.5.0
+P_VERSION=v0.6.0
 # END PRODUCT
 REPO="$P_REPO"
 BIN_DIR="${PHYGITAL_KEY_BIN_DIR:-$HOME/.local/bin}"

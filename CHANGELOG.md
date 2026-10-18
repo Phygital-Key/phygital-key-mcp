@@ -2,7 +2,7 @@
 
 Changes to Phygital Key MCP. Changes to the shared engine (approval page, keys, secure install, updates, verifier) are listed in the [base changelog](https://github.com/Phygital-Key/phygital-key/blob/main/CHANGELOG.md).
 
-## Unreleased
+## 0.6.0 (2026-10-18)
 
 - **Agent-bound approvals:** `request_approval` takes an optional `agent_key`. The approval is then `pka.2` and works only with a proof signed with that key (`Phygital-Proof`); the result's `next` says so. 8 new end-to-end checks.
 - **More checks:** the waiting limit of 50, `audit-check` with a missing log or a damaged keyring, `trust-service --key @file` (124 end-to-end checks in all).
