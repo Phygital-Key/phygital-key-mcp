@@ -40,9 +40,6 @@
 <a href="#all-the-guides">Guides</a>
 </p>
 
-> [!WARNING]
-> **Not audited yet.** No outside security company has checked it so far. It has had nine separate AI security reviews, and every problem they found was fixed or written down as a known limit. It is tested on every change. Before you rely on it, read the [threat model](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md) (what it protects against, and what it doesn't) and the [security reviews](https://github.com/Phygital-Key/phygital-key/blob/main/docs/security-reviews.md).
-
 ## What it is
 
 Phygital Key MCP is a [Phygital Key](https://github.com/Phygital-Key/phygital-key) product for AI apps that use MCP (Model Context Protocol, the common way AI apps plug in tools): Claude Code, Claude Desktop and any other MCP app. It is one program, `phygital-key-mcp`. It gives your AI app its tools and runs the [approval page](https://github.com/Phygital-Key/phygital-key/blob/main/docs/glossary.md#approval-page), the page where you say yes or no.
