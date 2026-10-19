@@ -2,7 +2,7 @@
 
 <h1 align="center">Phygital Key MCP</h1>
 
-<p align="center"><b>Your AI app asks through MCP. You approve the exact action with your passkey. The service checks your signed yes itself, offline.</b></p>
+<p align="center"><b>Your AI app asks before it acts. You say yes with your fingerprint, face or security key. The service that does the work can check that yes on its own, offline.</b></p>
 
 <p align="center">
 <a href="#open-source-and-credit"><img src="https://img.shields.io/badge/-open%20source-26D0F2" alt="Open source"></a>
@@ -41,30 +41,33 @@
 </p>
 
 > [!WARNING]
-> **Pre-audit.** No outside security firm has reviewed it yet. It has had nine independent AI security reviews with every finding fixed or documented as a limit, and it is tested on every change. Read the [threat model](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md) and the [security reviews](https://github.com/Phygital-Key/phygital-key/blob/main/docs/security-reviews.md) before you rely on it.
+> **Not audited yet.** No outside security company has checked it so far. It has had nine separate AI security reviews, and every problem they found was fixed or written down as a known limit. It is tested on every change. Before you rely on it, read the [threat model](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md) (what it protects against, and what it doesn't) and the [security reviews](https://github.com/Phygital-Key/phygital-key/blob/main/docs/security-reviews.md).
 
 ## What it is
 
-Phygital Key MCP is a [Phygital Key](https://github.com/Phygital-Key/phygital-key) product for AI apps that speak MCP (Model Context Protocol): Claude Code, Claude Desktop and any other MCP client. It is one program, `phygital-key-mcp`, that runs the MCP server and the [approval page](https://github.com/Phygital-Key/phygital-key/blob/main/docs/glossary.md#approval-page).
+Phygital Key MCP is a [Phygital Key](https://github.com/Phygital-Key/phygital-key) product for AI apps that use MCP (Model Context Protocol, the common way AI apps plug in tools): Claude Code, Claude Desktop and any other MCP app. It is one program, `phygital-key-mcp`. It gives your AI app its tools and runs the [approval page](https://github.com/Phygital-Key/phygital-key/blob/main/docs/glossary.md#approval-page), the page where you say yes or no.
 
-Before an AI agent deploys, pays, deletes or sends, it calls `request_approval` with the exact request. You read that request on the approval page and approve it with a passkey, fingerprint, face, PIN or hardware key. Your key signs the exact request (WebAuthn, ES256 on P-256). The agent hands the signed approval to the service, and the service checks it itself, offline, before it acts. The agent has no tool that can approve, and a request changed by one character is refused with `REQUEST_MISMATCH`.
+Before an AI agent deploys code, pays, deletes or sends something, it calls `request_approval` with the exact thing it wants to do. You read it on the approval page and approve with a passkey: your fingerprint, face, PIN or a hardware security key. Your key signs that exact request (WebAuthn, ES256 on P-256). The agent passes the signed approval to the service that does the work, and the service checks it itself, offline, before it acts.
 
-The approval page, the keys, standing approvals, receipts, the audit log, the secure install and signed updates come from the shared base, [Phygital-Key/phygital-key](https://github.com/Phygital-Key/phygital-key). This repository adds the MCP side. For agents that speak A2A, see [Phygital Key A2A](https://github.com/Phygital-Key/phygital-key-a2a).
+The agent has no tool that can approve. If the request changes by even one character, the service refuses it with `REQUEST_MISMATCH`.
+
+The approval page, the keys, standing approvals, receipts, the audit log, the secure install and signed updates come from the shared base, [Phygital-Key/phygital-key](https://github.com/Phygital-Key/phygital-key). This repository adds the MCP part. For agents that use A2A, see [Phygital Key A2A](https://github.com/Phygital-Key/phygital-key-a2a).
 
 ## Why it exists
 
-An AI agent with tools can deploy code, move money and send messages. Most AI apps ask "Allow?" with a button inside the app. That click is not signed, so the service on the other end has no way to check that a person said yes, or to what.
+An AI agent with tools can deploy code, move money and send messages. Most AI apps ask "Allow?" with a button inside the app. Nobody signs that click, so the service on the other end can't tell whether a person said yes, or what they said yes to.
 
 Phygital Key MCP gives the service proof it can check:
 
-| Property | How it holds |
+| Promise | How |
 |---|---|
-| **Can't be faked** | Only your key can sign (ES256 on P-256). The private key stays in your phone, laptop chip or security key. The AI never holds a key, none of the six tools can approve, and the gate has no signing key for approvals. |
-| **Can't be changed** | Your signature covers the exact request in canonical form (RFC 8785). The service rebuilds the request it is about to run and compares it to the last character. One changed character gives `REQUEST_MISMATCH`. |
-| **Can't be reused** | Each approval names one service (`aud`), lives 60 seconds by default and works once. A second use gives `REPLAYED`. |
-| **Can't be phished** | Passkeys sign only for the real address of your approval page. A copy on another address gets nothing usable. |
-| **Out of the AI's reach** | With the [secure install](#out-of-the-ais-reach), the gate runs as its own locked-down system user (`_phygitalkeymcp` on macOS, `phygitalkey-mcp` on Linux). The AI, even acting as you, can't change its program, read its data or write its keys. Only your administrator password can. |
-| **Checked offline** | The service needs your public keys and a few lines of code. No call home, no account, no cloud. |
+| **Can't be faked** | Only your key can sign (ES256 on P-256). The secret part of the key never leaves your phone, your laptop's security chip or your security key. The AI never holds a key, none of the six tools can approve, and the gate (this program) has no key that can sign approvals. |
+| **Can't be changed** | Your signature covers the exact request, written in one fixed form (RFC 8785). The service rebuilds the request it is about to run and compares the two, character by character. One changed character gives `REQUEST_MISMATCH`. |
+| **Can't be reused** | Each approval names one service (`aud`), lasts 60 seconds by default and works once. A second use gives `REPLAYED`. |
+| **Can't be phished** | Passkeys only sign for the real address of your approval page. A fake copy on another address gets nothing it can use. |
+| **Can't be copied and used by someone else** | An AI app can ask for an approval tied to its own key (`agent_key`). Then only that app can use the approval: a copy taken from a log or a chat is refused. |
+| **Out of the AI's reach** | With the [secure install](#out-of-the-ais-reach), the gate runs as its own locked-down user on your computer (`_phygitalkeymcp` on macOS, `phygitalkey-mcp` on Linux). The AI, even acting as you, can't change its program, read its data or add keys. Only your administrator password can. |
+| **Checked offline** | The service only needs your public keys and a few lines of code. Nothing calls home. No account, no cloud. |
 
 ## How it works
 
@@ -88,14 +91,14 @@ sequenceDiagram
     A->>G: record_receipt(id, receipt)
 ```
 
-Four roles, each with its own authority:
+Four roles, and what each one can and can't do:
 
-| Role | Decides | Can never |
+| Who | Decides | Can never |
 |---|---|---|
-| **You** (the approver) | Yes or no, on the exact request shown | Be skipped: no key, no approval |
-| **The agent** (your AI app) | What to ask for, through the six tools | Approve, sign, or change a request after you sign |
-| **The gate** (`phygital-key-mcp`) | Shows the request and collects your signature | Sign an approval on its own |
-| **The service** (verifier) | Its own audience, the request it runs, the level each action needs, which keys it trusts | Accept a request you did not sign |
+| **You** (the person who approves) | Yes or no, on the exact request shown | Be skipped: no key, no approval |
+| **The agent** (your AI app) | What to ask for, using the six tools | Approve, sign, or change a request after you signed it |
+| **The gate** (`phygital-key-mcp`) | Shows the request and collects your signature | Sign an approval by itself |
+| **The service** (the one that checks, also called the verifier) | Its own name (audience), the request it runs, how strong a yes each action needs, which keys it trusts | Accept a request you did not sign |
 
 More: [how it works](https://github.com/Phygital-Key/phygital-key/blob/main/docs/how-it-works.md), [rules for AI agents](docs/agents.md), [the open spec](https://github.com/Phygital-Key/phygital-key/blob/main/docs/spec.md).
 
@@ -107,7 +110,14 @@ More: [how it works](https://github.com/Phygital-Key/phygital-key/blob/main/docs
 <img src="https://raw.githubusercontent.com/Phygital-Key/phygital-key/main/docs/images/standing-dark.png" alt="A standing approval request in the dark theme: payments to ACME Ltd in EUR, amount_cents from 1 to 2000, anything else refused, at most 5 times until an end date, with every detail and the Deny and Approve with my key buttons" width="230">
 </p>
 
-The approval page is built by the gate from the canonical request, never from text the agent wrote. It shows every field, warns about look-alike, invisible or extra-space characters, and shows the SHA-256 fingerprint of the exact text you sign. Before it asks your key to sign, it checks that what it shows is what will be signed. Text inside a request ("already approved", "SYSTEM: ...") is shown as plain data and changes nothing. Reading the page: [approving](https://github.com/Phygital-Key/phygital-key/blob/main/docs/approving.md). How the page protects you: [approval page](https://github.com/Phygital-Key/phygital-key/blob/main/docs/approval-page.md).
+The gate builds the approval page from the request itself, never from text the agent wrote. The page:
+
+- shows every field;
+- warns you about look-alike letters, invisible characters and extra spaces;
+- shows a short fingerprint (SHA-256) of the exact text you sign;
+- checks that what it shows is what will be signed, before it asks your key.
+
+Text inside a request, like "already approved" or "SYSTEM: ...", is shown as plain text and changes nothing. How to read the page: [approving](https://github.com/Phygital-Key/phygital-key/blob/main/docs/approving.md). How the page protects you: [approval page](https://github.com/Phygital-Key/phygital-key/blob/main/docs/approval-page.md).
 
 ## Install
 
@@ -119,15 +129,15 @@ The approval page is built by the gate from the canonical request, never from te
 | Anywhere with Rust | `cargo install --locked --git https://github.com/Phygital-Key/phygital-key-mcp phygital-key-mcp` |
 | Server (Docker) | `docker run -d --name phygital-key-mcp -p 127.0.0.1:7468:7468 -v phygital-key-mcp:/data ghcr.io/phygital-key/phygital-key-mcp:latest` |
 | Secure install (macOS, Linux) | See [out of the AI's reach](#out-of-the-ais-reach) |
-| Manual | Download from [Releases](https://github.com/Phygital-Key/phygital-key-mcp/releases) (each archive has a `.sha256`, and the signed lists `release.txt` and `release2.txt` give every SHA-256) |
+| By hand | Download from [Releases](https://github.com/Phygital-Key/phygital-key-mcp/releases). Each file has a `.sha256` next to it, and the signed lists `release.txt` and `release2.txt` give every file's SHA-256 |
 
-The first release under this name is v0.4.0: release files for Linux, macOS and Windows, the public container image `ghcr.io/phygital-key/phygital-key-mcp` (`linux/amd64`, `linux/arm64`), the Homebrew formula and the Scoop manifest.
+The first release under this name was v0.4.0. Each release has files for Linux, macOS and Windows, the public container image `ghcr.io/phygital-key/phygital-key-mcp` (`linux/amd64`, `linux/arm64`), the Homebrew formula and the Scoop manifest.
 
-The script downloads the latest release for your machine, checks that its file list (`release2.txt`) is signed by a release key pinned in the script and still in date, and that the download matches its SHA-256, then writes only `~/.local/bin/phygital-key-mcp`. It needs `curl`, `tar` and `openssl`. Update later with `phygital-key-mcp update`.
+The script downloads the latest release for your computer and checks two things before it installs anything. First, that the release's file list (`release2.txt`) is signed by a release key built into the script, and is still in date. Second, that the download matches its SHA-256. Then it writes one file, `~/.local/bin/phygital-key-mcp`. It needs `curl`, `tar` and `openssl`. To update later: `phygital-key-mcp update`.
 
-The container runs `phygital-key-mcp --bind 0.0.0.0 serve` as user `65532` with its data in `/data` (`PHYGITAL_KEY_MCP_HOME=/data`). Add your key with `docker exec -it phygital-key-mcp phygital-key-mcp enroll` and get the access token with `docker exec -it phygital-key-mcp phygital-key-mcp token`. Publish the port on `127.0.0.1` only, or put a TLS proxy in front and pass `--origin https://your.host` ([own server](https://github.com/Phygital-Key/phygital-key/blob/main/docs/own-server.md)).
+The container runs `phygital-key-mcp --bind 0.0.0.0 serve` as user `65532`, with its data in `/data` (`PHYGITAL_KEY_MCP_HOME=/data`). Add your key with `docker exec -it phygital-key-mcp phygital-key-mcp enroll`, and get the access token with `docker exec -it phygital-key-mcp phygital-key-mcp token`. Only open the port on `127.0.0.1`, or put an HTTPS proxy in front and pass `--origin https://your.host` ([your own server](https://github.com/Phygital-Key/phygital-key/blob/main/docs/own-server.md)).
 
-Every way to install and update, with what each one runs as: [getting started](https://github.com/Phygital-Key/phygital-key/blob/main/docs/getting-started.md), [updates](https://github.com/Phygital-Key/phygital-key/blob/main/docs/updates.md).
+Every way to install and update, and which user each one runs as: [getting started](https://github.com/Phygital-Key/phygital-key/blob/main/docs/getting-started.md), [updates](https://github.com/Phygital-Key/phygital-key/blob/main/docs/updates.md).
 
 ## Try it in 2 minutes
 
@@ -135,77 +145,80 @@ Every way to install and update, with what each one runs as: [getting started](h
 phygital-key-mcp demo
 ```
 
-The demo starts the gate on `http://localhost:7468` and a fake service on `http://localhost:7469` that acts only with a valid approval. It prints a one-time link (valid 10 minutes) to add your passkey (Touch ID, Windows Hello, your phone or a security key) and the line to connect Claude Code with the access token:
+The demo starts the gate on `http://localhost:7468`, and a pretend service on `http://localhost:7469` that only acts when it gets a valid approval. It prints two things:
+
+- a one-time link (good for 10 minutes) to add your passkey: Touch ID, Windows Hello, your phone or a security key;
+- the line that connects Claude Code, with the access token filled in:
 
 ```bash
 claude mcp add --transport http phygital-key-mcp http://localhost:7468/mcp --header "Authorization: Bearer <token>"
 ```
 
-Then ask your AI app: *"Deploy api 2.4.1 to production through the demo service at http://localhost:7469."* An approval page opens. Approve, and the demo service deploys (nothing real happens). Deny, and it refuses. Ask it to deploy 2.4.2 with the same approval, and the service refuses with `REQUEST_MISMATCH`.
+Then ask your AI app: *"Deploy api 2.4.1 to production through the demo service at http://localhost:7469."* An approval page opens. Approve, and the demo service "deploys" (nothing real happens). Deny, and it refuses. Ask it to deploy 2.4.2 with the same approval, and the service refuses with `REQUEST_MISMATCH`.
 
-More things to ask, from payments to standing approvals: [things to ask your AI](docs/examples.md).
+More things to try, from payments to standing approvals: [things to ask your AI](docs/examples.md).
 
 ## Connect your AI app
 
 <p align="center"><img src="docs/images/connect.png" alt="Plug into any MCP app: Claude Code, Claude Desktop, Cursor and any app that speaks MCP, over stdio with no token or over HTTP with an access token. Three cards: Claude Code over stdio with claude mcp add phygital-key-mcp -- phygital-key-mcp stdio; any MCP app with the config JSON mcpServers phygital-key-mcp, command phygital-key-mcp, args stdio; and over HTTP, http://localhost:7468/mcp with the header Authorization: Bearer token, from phygital-key-mcp token." width="100%"></p>
 
-Two ways, both with the same six tools:
+There are two ways to connect. Both give the same six tools.
 
-| Your app | How |
+| If your app | Do this |
 |---|---|
-| Starts local servers (Claude Code, Claude Desktop and most others) | Command `phygital-key-mcp stdio`. No token needed: only the app that started the gate can talk to it. |
-| Connects to a URL | Run `phygital-key-mcp serve` (or the secure install, or the container), then use `http://localhost:7468/mcp` with the header that `phygital-key-mcp token` prints. |
+| Starts tools on your computer itself (Claude Code, Claude Desktop and most others) | Use the command `phygital-key-mcp stdio`. No token needed: only the app that started the gate can talk to it. |
+| Connects to a web address | Run `phygital-key-mcp serve` (or use the secure install, or the container), then use `http://localhost:7468/mcp` with the header that `phygital-key-mcp token` prints. |
 
-stdio, in Claude Code:
+The first way (stdio), in Claude Code:
 
 ```bash
 claude mcp add phygital-key-mcp -- phygital-key-mcp stdio
 ```
 
-Claude Desktop (`claude_desktop_config.json`) and most other apps take this shape:
+Claude Desktop (`claude_desktop_config.json`) and most other apps use this shape:
 
 ```json
 { "mcpServers": { "phygital-key-mcp": { "command": "phygital-key-mcp", "args": ["stdio"] } } }
 ```
 
-HTTP, in Claude Code (`phygital-key-mcp token` prints this line with your token filled in):
+The second way (HTTP), in Claude Code (`phygital-key-mcp token` prints this line with your token filled in):
 
 ```bash
 claude mcp add --transport http phygital-key-mcp http://localhost:7468/mcp --header "Authorization: Bearer <token>"
 ```
 
-Add your key once, from your own terminal, with `phygital-key-mcp enroll` (a one-time link, valid 10 minutes). In stdio mode the gate never prints that link itself, because the AI app keeps its output in logs the AI could read.
+Add your key once, from your own terminal, with `phygital-key-mcp enroll`. It gives a one-time link, good for 10 minutes. In stdio mode the gate never prints that link itself, because AI apps keep that output in logs the AI could read.
 
-The HTTP endpoint refuses calls without the token, calls from web pages and a wrong `Host` header (DNS rebinding). The server names itself `phygital-key-mcp` (title `Phygital Key MCP`) with the program's version. Every app, header, option and refusal: [connect your AI app](docs/connect-your-ai.md).
+The HTTP address refuses calls without the token, calls from web pages, and calls with a wrong `Host` header (a trick called DNS rebinding). The server calls itself `phygital-key-mcp` (title `Phygital Key MCP`) with the program's version. Every app, header, option and refusal: [connect your AI app](docs/connect-your-ai.md).
 
 ## The six tools
 
 <p align="center"><img src="docs/images/tools.png" alt="The agent's tools: six tools, none can approve. The agent can ask, wait, cancel, use a standing approval and pass back a receipt; only your key signs. Six cards: request_approval asks for one exact request for one service; get_approval waits for your answer and gets the signed yes; cancel_approval withdraws a request or revokes a standing one; request_standing_approval asks for a limited, repeated permission; use_standing_approval gives a one-minute use token inside the limits; record_receipt passes back the service's signed done." width="100%"></p>
 
-The agent can ask, wait, cancel and report. It can never approve.
+The agent can ask, wait, cancel and report back. It can never approve.
 
 | Tool | What it does |
 |---|---|
-| `request_approval` | Ask you to approve one exact request for one service, at level `medium` (a touch) or `high` (fingerprint, face or PIN) |
-| `get_approval` | Wait for your answer and get the signed approval |
-| `cancel_approval` | Withdraw a waiting request, or revoke a standing approval |
-| `request_standing_approval` | Ask for a limited, repeated permission (up to 1000 uses, up to 30 days) |
-| `use_standing_approval` | Get a one-minute use token for one action inside those limits |
-| `record_receipt` | Pass back the service's signed "done" so you see it on the approval page |
+| `request_approval` | Asks you to approve one exact request for one service, at level `medium` (a touch on your key) or `high` (fingerprint, face or PIN). It can also take the app's own key (`agent_key`), so only that app can use the approval. |
+| `get_approval` | Waits for your answer and gets the signed approval |
+| `cancel_approval` | Withdraws a request that is still waiting, or cancels a standing approval |
+| `request_standing_approval` | Asks for a limited, repeated permission (up to 1000 uses, up to 30 days) |
+| `use_standing_approval` | Gets a one-minute use token for one action inside those limits |
+| `record_receipt` | Passes back the service's signed "done", so you see it on the approval page |
 
-Each result carries a `status` (`pending`, `approved`, `denied`, `cancelled`, `expired`) and a `next` line that tells the agent what to do. Only `approved` with an `approval` string is a yes.
+Each answer has a `status` (`pending`, `approved`, `denied`, `cancelled`, `expired`) and a `next` line that tells the agent what to do. Only `approved` with an `approval` string means yes.
 
-When the AI app supports it, `request_approval` asks the app to open the approval page for you (MCP URL elicitation). Accepting that prompt opens the page and approves nothing.
+When the AI app supports it, `request_approval` asks the app to open the approval page for you (MCP URL elicitation). Saying yes to that prompt only opens the page. It approves nothing.
 
-For agent builders: [rules for AI agents](docs/agents.md), [tool reference](docs/tools.md) (every schema, result and error text), [prompt snippets](examples/agent-prompts.md), [things to ask your AI](docs/examples.md).
+For people building agents: [rules for AI agents](docs/agents.md), [tool reference](docs/tools.md) (every input, answer and error text), [prompt snippets](examples/agent-prompts.md), [things to ask your AI](docs/examples.md).
 
 ## Check approvals in your service
 
 <p align="center"><img src="https://raw.githubusercontent.com/Phygital-Key/phygital-key/main/docs/images/promo/check.png" alt="For services, check it anywhere: Rust, JavaScript or any language through the command line, with the same 141 shared test vectors. Three cards: Rust with phygital-key-verify, building the request you are about to run and calling verifier.verify with Level::High, which refuses on any doubt; JavaScript with no dependencies, where r.ok is true to act and r.error is REPLAYED; and the command line, phygital-key-mcp verify with the approval, the request and the audience, printing ok true with exit 0 or error REPLAYED with exit 1, the same in phygital-key-a2a." width="100%"></p>
 
-The service is the verifier. It checks the approval against the request **it** is about to run, built from its own data. The check is the same whichever product made the approval.
+This part is for whoever runs the service. The service does the checking. It compares the approval with the request **it** is about to run, built from its own data. The check is the same no matter which product made the approval.
 
-**Rust**, with the [`phygital-key-verify`](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-rust.md) crate from the base:
+**Rust**, with the [`phygital-key-verify`](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-rust.md) library from the base:
 
 ```rust
 use phygital_key_verify::{Config, Keyring, Level, Verifier};
@@ -220,7 +233,7 @@ verifier.verify(&approval, &request, Level::High)?; // refuses on any doubt
 // ...now deploy.
 ```
 
-**Any language:** call the command line and check the exit code.
+**Any language:** run the command line and look at the exit code.
 
 ```bash
 phygital-key-mcp verify --approval "$APPROVAL" \
@@ -228,54 +241,59 @@ phygital-key-mcp verify --approval "$APPROVAL" \
   --aud https://deploy.example.com --level high
 ```
 
-Exit 0 with `{"ok": true, ...}` means go. Exit 1 with `{"ok": false, "error": "REQUEST_MISMATCH"}` means no. Used approvals are remembered in a local file, so each works once. A JavaScript checker with no dependencies passes the same 141 shared test vectors ([JavaScript](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-js.md)).
+Exit 0 with `{"ok": true, ...}` means go ahead. Exit 1 with `{"ok": false, "error": "REQUEST_MISMATCH"}` means no. Used approvals are saved in a local file, so each one works only once. There is also a JavaScript checker with no dependencies, and it passes the same 141 shared test cases ([JavaScript](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-js.md)).
 
-Full guide: [integrate](https://github.com/Phygital-Key/phygital-key/blob/main/docs/integrate.md). Per language: [Rust](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-rust.md), [JavaScript](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-js.md), [command line](https://github.com/Phygital-Key/phygital-key/blob/main/docs/cli.md).
+Full guide: [integrate](https://github.com/Phygital-Key/phygital-key/blob/main/docs/integrate.md). By language: [Rust](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-rust.md), [JavaScript](https://github.com/Phygital-Key/phygital-key/blob/main/docs/verifier-js.md), [command line](https://github.com/Phygital-Key/phygital-key/blob/main/docs/cli.md).
 
 ## Safety, verification and authority
 
 ### What the service checks, in order
 
-The verifier fails closed. The first failed check refuses the approval with a code.
+When in doubt, the checker says no. The first check that fails refuses the approval, with a code that says why.
 
-| Step | Check | Refused with |
+| Step | What is checked | Refused with |
 |:-:|---|---|
-| 1 | Present, strict JSON, known fields, sizes and depth | `APPROVAL_REQUIRED`, `MALFORMED` |
-| 2 | Approved for this service (`aud`) | `WRONG_AUDIENCE` |
-| 3 | In time: not before `iat` (30 s skew), not after `exp`, life at most 300 s | `EXPIRED` |
-| 4 | The exact request, byte for byte in canonical form | `REQUEST_MISMATCH` |
-| 5 | The level this action needs (`medium` touch, `high` fingerprint, face or PIN) | `ASSURANCE_TOO_LOW` |
-| 6 | Signed by a key in your keyring, for the right site | `UNTRUSTED_KEY` |
-| 7 | The WebAuthn assertion: type, challenge, origin, site hash, ES256 signature | `BAD_SIGNATURE` |
-| 8 | Presence and verification flags match the level | `ASSURANCE_TOO_LOW` |
-| 9 | First use (seen store) | `REPLAYED` |
+| 1 | The approval is there, is clean JSON, has only known fields, and isn't too big or too deep | `APPROVAL_REQUIRED`, `MALFORMED` |
+| 2 | It was approved for this service (`aud`) | `WRONG_AUDIENCE` |
+| 3 | It is in time: not before `iat` (30 seconds of clock difference allowed), not after `exp`, and it lives at most 300 seconds | `EXPIRED` |
+| 4 | It is the exact request, byte for byte, in the fixed form | `REQUEST_MISMATCH` |
+| 5 | It is a strong enough yes for this action (`medium` is a touch, `high` is fingerprint, face or PIN) | `ASSURANCE_TOO_LOW` |
+| 6 | It was signed by a key in your keyring (your list of trusted keys), for the right site | `UNTRUSTED_KEY` |
+| 7 | The passkey's signed answer (WebAuthn assertion): type, challenge, origin, site hash and ES256 signature | `BAD_SIGNATURE` |
+| 8 | The "person was there" and "person was verified" flags match the level | `ASSURANCE_TOO_LOW` |
+| 9 | It is the first use (used approvals are remembered) | `REPLAYED` |
 
-Every code, with causes and what to do: [error codes](https://github.com/Phygital-Key/phygital-key/blob/main/docs/error-codes.md). What an agent does with each one: [when the service refuses](docs/agents.md#when-the-service-refuses).
+Every code, why it happens and what to do: [error codes](https://github.com/Phygital-Key/phygital-key/blob/main/docs/error-codes.md). What an agent should do with each one: [when the service refuses](docs/agents.md#when-the-service-refuses).
 
 ### The cryptography
 
-Your key signs a challenge that commits to every claim:
+Your key signs a challenge that locks in every detail of the approval:
 
 $$\text{challenge} = \mathrm{SHA256}\big(\texttt{"phygital-key/approval/v1"} \,\|\, \texttt{0x00} \,\|\, \mathrm{JCS}(\text{claims})\big)$$
 
-The signature is ES256 (ECDSA on P-256 with SHA-256) in a WebAuthn assertion. Hashes are SHA-256. The canonical form is RFC 8785 (JCS): strict JSON, safe integers only, no floats, text in Unicode NFC (other text is refused, never rewritten). Receipts and use tokens are ES256 JWS, the audit log is a SHA-256 hash chain, and release lists are signed with ECDSA P-256. Deep dives: [canonical form](https://github.com/Phygital-Key/phygital-key/blob/main/docs/canonical-form.md), [WebAuthn checks](https://github.com/Phygital-Key/phygital-key/blob/main/docs/webauthn.md), [key history](https://github.com/Phygital-Key/phygital-key/blob/main/docs/key-history.md).
+- The signature is ES256 (ECDSA on P-256 with SHA-256), made by your passkey (a WebAuthn assertion).
+- Hashes are SHA-256.
+- The fixed form is RFC 8785 (JCS): strict JSON, only safe whole numbers, no decimals, and text in Unicode NFC. Other text is refused, never rewritten.
+- Receipts and use tokens are ES256 JWS. The audit log is a SHA-256 hash chain, so a changed entry shows. Release lists are signed with ECDSA P-256, and also with ML-DSA-65, a signature built to resist future quantum computers.
+
+Deep dives: [canonical form](https://github.com/Phygital-Key/phygital-key/blob/main/docs/canonical-form.md), [WebAuthn checks](https://github.com/Phygital-Key/phygital-key/blob/main/docs/webauthn.md), [key history](https://github.com/Phygital-Key/phygital-key/blob/main/docs/key-history.md).
 
 > [!NOTE]
-> Approvals are **signed, not encrypted**. The gate, the service and anyone holding an approval can read the request. Keep passwords and card numbers out of requests. Use HTTPS for any gate that is not on `localhost`. Why: [decision 33](https://github.com/Phygital-Key/phygital-key/blob/main/docs/decisions.md).
+> Approvals are **signed, not encrypted**. The gate, the service and anyone holding an approval can read the request. Keep passwords and card numbers out of requests. Use HTTPS for any gate that isn't on `localhost`. Why: [decision 33](https://github.com/Phygital-Key/phygital-key/blob/main/docs/decisions.md).
 
-Every key you add or remove is itself an approval, signed by a key you already trust, so a service can check your whole key history from your first key's fingerprint (`phygital-key-mcp keys --check <fingerprint>`).
+Every key you add or remove is itself an approval, signed by a key you already trust. So a service can check your whole key history starting from your first key's fingerprint (`phygital-key-mcp keys --check <fingerprint>`).
 
 ### Out of the AI's reach
 
 <p align="center"><img src="https://raw.githubusercontent.com/Phygital-Key/phygital-key/main/docs/images/promo/reach.png" alt="Secure install on macOS and Linux, out of the AI's reach: the gate runs as its own locked-down system user, and an agent acting as you cannot touch it. You, and any AI acting as you, are refused when trying to change its program, read its data, write its keys or serve a fake page on its port. Only the administrator password crosses into the gate's own system user." width="100%"></p>
 
-An AI agent on your computer runs as you, so it could edit files you own, including a gate you installed yourself. The secure install moves the gate out of that reach (macOS and Linux). From a fresh terminal:
+An AI agent on your computer runs as you, so it could change files you own, including a gate you installed yourself. The secure install puts the gate where the AI can't reach it (macOS and Linux). Open a new terminal and run:
 
 ```bash
 curl -q -fsSL https://raw.githubusercontent.com/Phygital-Key/phygital-key-mcp/v0.6.0/install-service.sh | sudo bash
 ```
 
-It downloads the official release itself, checks it against the signed release list, installs it into root-owned folders, starts it as its own system user, and refuses to run if any other program listens on port 7468. Then:
+It downloads the official release itself and checks it against the signed release list. It installs it into folders only the administrator can change, and runs it as its own user. If any other program is already using port 7468, it refuses to run. Then:
 
 ```bash
 phygital-key-mcp-admin enroll      # add your key
@@ -288,47 +306,57 @@ phygital-key-mcp-admin status      # check that the real gate is the one answeri
 | Gate user | `_phygitalkeymcp` | `phygitalkey-mcp` |
 | Program | `/Library/PhygitalKey/mcp/bin/phygital-key-mcp` | `/usr/lib/phygital-key-mcp/bin/phygital-key-mcp` |
 | Data | `/Library/Application Support/PhygitalKey/mcp` | `/var/lib/phygital-key-mcp` |
-| Services | launchd `io.phygitalkey.mcp.gate`, `io.phygitalkey.mcp.update` | systemd `phygital-key-mcp.service`, `phygital-key-mcp-update.timer` |
+| Background services | launchd `io.phygitalkey.mcp.gate`, `io.phygitalkey.mcp.update` | systemd `phygital-key-mcp.service`, `phygital-key-mcp-update.timer` |
+
+On Linux, systemd holds the gate's port while the gate restarts for an update, so no other program can grab it in between.
 
 > [!IMPORTANT]
-> The secure install protects the gate only if your administrator password is out of the agent's reach. Run it from a terminal you trust, do not allow `sudo` without a password for your user, and never type that password where the AI can see it. Each admin command asks for it.
+> The secure install only protects the gate if the AI can't get your administrator password. Run it from a terminal you trust, don't let your user run `sudo` without a password, and never type that password where the AI can see it. Each admin command asks for it.
 
 Details, every folder and every refusal: [secure install](https://github.com/Phygital-Key/phygital-key/blob/main/docs/secure-install.md).
 
 ### Signed automatic updates
 
-The secure install updates itself once a day, and installs a release only if its file list (`release2.txt`) is signed by the release keys pinned in this program and its installers (ECDSA P-256, plus ML-DSA-65 once that key is made), still in date and not older than one seen before, and it is newer than the installed version. The signing key is a secret of this repository's GitHub environment `release`, which only a release run from a `v*` tag can use. The update waits while a standing approval is active (up to 7 days), and if the new gate does not start and pass its checks, the previous program comes back. Root runs with a clean environment, so your `~/.curlrc` and `PATH` are never used.
+The secure install checks for updates once a day. It installs a new release only if all of this is true:
 
-`phygital-key-mcp-admin status` shows the last result, `phygital-key-mcp-admin update` updates now, and `--no-auto-update` turns it off. How the channel works: [the update channel](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md#the-update-channel). Every way to update: [updates](https://github.com/Phygital-Key/phygital-key/blob/main/docs/updates.md).
+- its file list (`release2.txt`) is signed by the release keys built into this program and its installers (ECDSA P-256, plus ML-DSA-65 once that key exists);
+- the list is still in date, and not older than one this computer already saw;
+- it is newer than the version you have.
+
+The signing key is a secret kept in this repository's GitHub environment `release`, and only a release run started from a `v*` tag can use it.
+
+The update waits while a standing approval is active (7 days at most), because a restart would end it. If the new gate doesn't start and pass its checks, the previous version comes back. The update runs as the administrator with a clean setup, so your own settings like `~/.curlrc` and `PATH` are never used.
+
+`phygital-key-mcp-admin status` shows the last result, `phygital-key-mcp-admin update` updates now, and `--no-auto-update` turns automatic updates off. How updates are protected: [the update channel](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md#the-update-channel). Every way to update: [updates](https://github.com/Phygital-Key/phygital-key/blob/main/docs/updates.md).
 
 ### How it is tested
 
-| Layer | Where | What |
+| What | Where | How |
 |---|---|---|
-| End to end and red team | This repository | 124 checks with the release binary, a real Chromium with a virtual passkey, the official MCP TypeScript SDK and the demo service, including attacks: changed requests, prompt injection, forged signatures, replays, DNS rebinding, key rollback |
-| Secure install | This repository | 36 checks on Linux, 32 on macOS: installed for real in CI, then attacked as the user; update job (started by systemd and launchd), signature refusal, a planted `~/.curlrc` and `PATH`, switch-back and the sandbox score |
-| Container | This repository | Builds the image, starts the gate, checks the user `65532` and enrollment |
-| Generated files | This repository | The files made from the base's templates must equal the committed ones |
-| Shared test vectors | Base | 141 cases that the Rust and JavaScript checkers must both pass, plus Google's Wycheproof cases, a SimpleWebAuthn cross-check, property tests, fuzzing and mutation testing |
-| Security reviews | Base | 8 independent AI security reviews, every finding fixed or documented as a limit |
+| End to end, and attacks | This repository | 124 checks with the real release program, a real Chromium browser with a pretend passkey, the official MCP TypeScript SDK and the demo service. They include attacks: changed requests, prompt injection, forged signatures, reused approvals, DNS rebinding, key rollback |
+| Secure install | This repository | 36 checks on Linux, 32 on macOS. It is installed for real in CI, then attacked as the user. Also checked: the update job (started by systemd and launchd), refusing a badly signed release, a planted `~/.curlrc` and `PATH`, switching back after a failed update, and the sandbox score |
+| Container | This repository | Builds the image, starts the gate, checks user `65532` and adding a key |
+| Generated files | This repository | The files made from the base's templates must match the ones saved here |
+| Shared test cases | Base | 141 cases that both the Rust and the JavaScript checkers must pass, plus Google's Wycheproof cases, a cross-check with SimpleWebAuthn, property tests, fuzzing and mutation testing |
+| Security reviews | Base | 9 separate AI security reviews. Every problem found was fixed or written down as a known limit |
 
-CI runs on every push on Linux, macOS and Windows, and again after each daily base update. Job by job: [testing](docs/testing.md). The engine's tests: [testing in the base](https://github.com/Phygital-Key/phygital-key/blob/main/docs/testing.md). Found a problem? [Report it privately](SECURITY.md).
+CI runs on every change on Linux, macOS and Windows, and again after each daily base update. Job by job: [testing](docs/testing.md). The engine's tests: [testing in the base](https://github.com/Phygital-Key/phygital-key/blob/main/docs/testing.md). Found a problem? [Report it privately](SECURITY.md).
 
 ## Standing approvals
 
 <p align="center"><img src="https://raw.githubusercontent.com/Phygital-Key/phygital-key/main/docs/images/promo/standing.png" alt="Standing approvals, say yes once, with limits: for small repeated actions, every use is checked against what you signed, and you can revoke it at any time. A signed, active standing approval for payment to ACME Ltd in EUR, amount_cents 1 to 2000, at most 5 uses in 7 days, used 2 of 5; a use with amount_cents 5000 is refused with NOT_ALLOWED." width="100%"></p>
 
-For small repeated actions, approve once, with limits:
+For small actions that repeat, you can say yes once, with limits:
 
 > Allow **payment** to **ACME Ltd** in **EUR**, **up to 20.00** each, **at most 5 times**, **for 7 days**.
 
-The agent asks with `request_standing_approval` (up to 1000 uses, up to 30 days). For each action it calls `use_standing_approval`, gets a one-minute use token, and sends it with the standing approval (`Phygital-Approval` and `Phygital-Use` headers). The service checks both and counts the uses itself. Another payee, a bigger amount or an extra field is refused with `NOT_ALLOWED`. Standing approvals always need fingerprint, face or PIN.
+The agent asks with `request_standing_approval` (up to 1000 uses, up to 30 days). For each action it calls `use_standing_approval` and gets a use token that lasts one minute. It sends that token with the standing approval (the `Phygital-Approval` and `Phygital-Use` headers). The service checks both and counts the uses itself. A different payee, a bigger amount or an extra field is refused with `NOT_ALLOWED`. Standing approvals always need your fingerprint, face or PIN.
 
-Revoke on the approval page, or ask the agent to call `cancel_approval`. New uses stop at once, and one more touch signs a revocation that services read from `/.well-known/phygital-key-revoked.json`. Guides: [for people](https://github.com/Phygital-Key/phygital-key/blob/main/docs/standing-approvals.md), [for services](https://github.com/Phygital-Key/phygital-key/blob/main/docs/integrate.md#standing-approvals), [revocations](https://github.com/Phygital-Key/phygital-key/blob/main/docs/revocations.md).
+You can cancel it on the approval page, or ask the agent to call `cancel_approval`. New uses stop at once. One more touch signs a cancellation notice that services read from `/.well-known/phygital-key-revoked.json`. Guides: [for people](https://github.com/Phygital-Key/phygital-key/blob/main/docs/standing-approvals.md), [for services](https://github.com/Phygital-Key/phygital-key/blob/main/docs/integrate.md#standing-approvals), [cancellations](https://github.com/Phygital-Key/phygital-key/blob/main/docs/revocations.md).
 
 ## Receipts
 
-After acting, a service can answer with a signed receipt ("done" or "failed"). The agent passes it back with `record_receipt`, and your approval page shows it only if the service's pinned key signed it:
+After it acts, a service can send back a signed receipt ("done" or "failed"). The agent passes it on with `record_receipt`. Your approval page shows it only if it was signed by the key you saved for that service:
 
 ```bash
 phygital-key-mcp trust-service --aud https://deploy.example.com --key <its receipt_public_key>
@@ -338,7 +366,7 @@ Format and checks: [receipts](https://github.com/Phygital-Key/phygital-key/blob/
 
 ## All the guides
 
-Shared guides live in the base repository: **[all the guides](https://github.com/Phygital-Key/phygital-key#all-the-guides)** (approving, keys, standing approvals, secure install, checking approvals in your service, security). Guides for one product (connecting AI apps, its agent tools, prompts) live in that product's repository.
+The shared guides are in the base repository: **[all the guides](https://github.com/Phygital-Key/phygital-key#all-the-guides)** (approving, keys, standing approvals, secure install, checking approvals in your service, security). Guides for one product (connecting AI apps, its tools, prompts) are in that product's repository.
 
 This product's guides: [Connect your AI app](docs/connect-your-ai.md) · [MCP tools](docs/tools.md) · [Agents guide](docs/agents.md) · [Things to ask](docs/examples.md) · [Prompt snippets](examples/agent-prompts.md) · [Testing](docs/testing.md)
 
@@ -346,26 +374,34 @@ This product's guides: [Connect your AI app](docs/connect-your-ai.md) · [MCP to
 
 | Path | What |
 |---|---|
-| [`src/main.rs`](src/main.rs) | The product: its name, program, port and release channel, and the MCP adapter (endpoint `/mcp`, stdio mode) |
-| [`src/mcp.rs`](src/mcp.rs) | The six MCP tools and the instructions the server sends to every client |
-| [`tests/e2e/`](tests/e2e) | 124 end-to-end and red-team checks: release binary, Chromium with a virtual passkey, the official MCP SDK, the demo service |
+| [`src/main.rs`](src/main.rs) | The product: its name, program, port and where releases come from, plus the MCP part (address `/mcp`, stdio mode) |
+| [`src/mcp.rs`](src/mcp.rs) | The six MCP tools, and the instructions the server sends to every app |
+| [`tests/e2e/`](tests/e2e) | 124 end-to-end and attack checks: release program, Chromium with a pretend passkey, the official MCP SDK, the demo service |
 | [`docs/`](docs) | The MCP guides: [connect your AI](docs/connect-your-ai.md), [tools](docs/tools.md), [agents](docs/agents.md), [examples](docs/examples.md), [testing](docs/testing.md) |
 | [`examples/`](examples) | [Prompt snippets](examples/agent-prompts.md) for your agent's instructions |
 | [`packaging/container/`](packaging/container) | The container image |
-| [`release-keys.pem`](release-keys.pem) | The pinned public release keys that every update and installer checks against |
-| `install.sh`, `install-service.sh`, `tests/secure-install.sh`, `scripts/` | Made from the base's templates for this product with `phygital-key-mcp product-files`. Never edited by hand: CI fails if they differ. See [AGENTS.md](AGENTS.md) |
+| [`release-keys.pem`](release-keys.pem) | The public release keys that every update and installer checks against |
+| `install.sh`, `install-service.sh`, `tests/secure-install.sh`, `scripts/` | Made from the base's templates for this product with `phygital-key-mcp product-files`. Never edited by hand: CI fails if they don't match. See [AGENTS.md](AGENTS.md) |
 
-Everything else (the approval page, keys, standing approvals, receipts, audit log, secure install, signed updates, the verifier) comes from the base, [Phygital-Key/phygital-key](https://github.com/Phygital-Key/phygital-key). Every day the `sync-base` workflow moves this product to the base's latest commit, keeps it only if the tests and the 124 end-to-end checks pass, then pushes it and starts the full CI. How the base and the products fit: [architecture](https://github.com/Phygital-Key/phygital-key/blob/main/docs/architecture.md#the-base-and-the-products).
+Everything else comes from the base, [Phygital-Key/phygital-key](https://github.com/Phygital-Key/phygital-key): the approval page, keys, standing approvals, receipts, audit log, secure install, signed updates and the checker. Every day the `sync-base` workflow moves this product to the base's latest version. It keeps the change only if the tests and the 124 end-to-end checks pass, then saves it and runs the full CI. How the base and the products fit together: [architecture](https://github.com/Phygital-Key/phygital-key/blob/main/docs/architecture.md#the-base-and-the-products).
 
 Changes: [CHANGELOG.md](CHANGELOG.md). Security problems: [SECURITY.md](SECURITY.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Privacy
 
-The gate keeps its data in one folder (`~/.phygital-key-mcp`, or a folder only the gate user can read after the secure install): the public keyring, a hash-chained audit log (ids, hashes and results, never the request itself), pinned service keys, signed revocations and the access token. Waiting requests live only in memory. No analytics, no accounts, no telemetry. The fonts are built into the program, so the approval page loads nothing from outside. More: [privacy](https://github.com/Phygital-Key/phygital-key/blob/main/docs/privacy.md).
+The gate keeps its data in one folder: `~/.phygital-key-mcp`, or after the secure install, a folder only the gate's own user can read. In it:
+
+- the public keyring (your public keys);
+- an audit log, chained so changes show (ids, hashes and results, never the request itself);
+- saved service keys;
+- signed cancellations;
+- the access token.
+
+Requests that are still waiting live only in memory. No analytics, no accounts, no tracking. The fonts are built into the program, so the approval page loads nothing from the internet. More: [privacy](https://github.com/Phygital-Key/phygital-key/blob/main/docs/privacy.md).
 
 ## Open source and credit
 
-Phygital Key MCP is free and open source under the [Apache-2.0](LICENSE) license. You can use it at home or at work, change it, ship it in a product and sell that product. You can read every line that handles your approvals, and check the release you run against its signed SHA-256 list.
+Phygital Key MCP is free and open source under the [Apache-2.0](LICENSE) license. You can use it at home or at work, change it, put it in a product and sell that product. You can read every line of code that handles your approvals, and check the release you run against its signed SHA-256 list.
 
 Keep the [`NOTICE`](NOTICE) file, with the line "Created by Phygital-Key", in every copy or changed version (Apache-2.0, section 4(d)).
 
@@ -373,7 +409,7 @@ Contributions are welcome under the same license: see [CONTRIBUTING.md](CONTRIBU
 
 ## No warranty
 
-Provided "as is", without warranty of any kind, as the [license](LICENSE) says. It is pre-audit: try it with the demo first, read the [threat model](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md), and keep a second key enrolled.
+Provided "as is", without warranty of any kind, as the [license](LICENSE) says. It hasn't been audited yet: try it with the demo first, read the [threat model](https://github.com/Phygital-Key/phygital-key/blob/main/docs/threat-model.md), and keep a second key added as a backup.
 
 ## License
 
