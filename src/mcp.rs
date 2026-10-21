@@ -155,7 +155,14 @@ impl GateMcp {
     }
 
     #[tool(
-        description = "Ask a person to approve one exact action with their passkey, fingerprint or hardware key. Returns an id and a link. Then call get_approval."
+        description = "Ask a person to approve one exact action with their passkey, fingerprint or hardware key. Returns an id and approve_url, not the decision: then call get_approval. For many similar actions, use request_standing_approval. Nothing is approved until the person signs.",
+        annotations(
+            title = "Ask a person to approve an action",
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn request_approval(
         &self,
@@ -204,7 +211,13 @@ impl GateMcp {
     }
 
     #[tool(
-        description = "Wait for the person's decision on a request. Returns status (pending, approved, denied, cancelled, expired) and, when approved, the approval string to send with the action."
+        description = "Wait for the person's decision on a request. Returns status: pending (call again), approved (with the approval string to send with the action), denied, cancelled or expired (then do not act). Changes nothing; safe to call again.",
+        annotations(
+            title = "Wait for the person's decision",
+            read_only_hint = true,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
     )]
     async fn get_approval(&self, Parameters(args): Parameters<GetArgs>) -> CallToolResult {
         match self
@@ -218,7 +231,14 @@ impl GateMcp {
     }
 
     #[tool(
-        description = "After acting, pass back the service's signed receipt for an approval, so the person can see it was done."
+        description = "After the service acted, pass back the signed receipt it returned, so the person sees it was done. Only records it: one per approval, or per use of a standing approval. If no receipt key is pinned for that service, tell the person and don't retry.",
+        annotations(
+            title = "Record the service's receipt",
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn record_receipt(&self, Parameters(args): Parameters<ReceiptArgs>) -> CallToolResult {
         match self.gate.record_receipt(&args.id, &args.receipt) {
@@ -228,7 +248,14 @@ impl GateMcp {
     }
 
     #[tool(
-        description = "Ask a person once for a standing approval: the same kind of action, within fixed limits, a few times, for a few days. Each use then needs no new approval. Use sparingly; the person sees every limit."
+        description = "Ask a person once to allow the same kind of action within fixed limits, up to max_uses times, for up to days days. Then call get_approval, and use_standing_approval for each action. For one action, use request_approval. Use sparingly: the person sees every limit.",
+        annotations(
+            title = "Ask for a standing approval",
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn request_standing_approval(
         &self,
@@ -283,7 +310,14 @@ impl GateMcp {
     }
 
     #[tool(
-        description = "Use an approved standing approval for one exact request inside its limits. Returns `approval` and `use_token`: send both to the service (headers Phygital-Approval and Phygital-Use)."
+        description = "Use an approved standing approval for one exact request inside its limits. Counts one use and returns `approval` and `use_token`: send both with that request (headers Phygital-Approval and Phygital-Use). The token works once, within 60 seconds.",
+        annotations(
+            title = "Use a standing approval",
+            read_only_hint = false,
+            destructive_hint = false,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn use_standing_approval(&self, Parameters(args): Parameters<UseArgs>) -> CallToolResult {
         match self.gate.use_standing(&args.id, &args.request) {
@@ -298,7 +332,14 @@ impl GateMcp {
     }
 
     #[tool(
-        description = "Withdraw a request that is still waiting, or revoke an approved standing approval."
+        description = "Withdraw a request that is still waiting, or revoke an approved standing approval. Cannot be undone. A revoke stops new uses at once and returns sign_url: show it to the person, so services refuse the standing approval too.",
+        annotations(
+            title = "Withdraw or revoke an approval",
+            read_only_hint = false,
+            destructive_hint = true,
+            idempotent_hint = false,
+            open_world_hint = false
+        )
     )]
     async fn cancel_approval(&self, Parameters(args): Parameters<IdArgs>) -> CallToolResult {
         // An approved standing approval is revoked; the person still signs the

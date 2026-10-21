@@ -36,9 +36,9 @@ Details that matter when you wire up a client:
 - **stdio:** the approval page and the MCP side live and stop together. If the page cannot start (its port is taken), the gate exits instead of handing out links to an address it does not own. In stdio mode the gate never prints an enrollment link, because AI apps keep the server's stderr in logs an agent may read. It prints this instead: `phygital-key-mcp: no key enrolled yet. In your own terminal, run: phygital-key-mcp enroll (or phygital-key-mcp-admin enroll for the secure install)`.
 - **HTTP token:** the token is 32 random bytes in base64url, made once and kept in `<home>/access-token`. The word `Bearer` may be in any case. A missing or wrong token gets HTTP 401 with the body ``{"error":"missing or wrong access token (see `phygital-key-mcp token`)"}``. `--no-token` turns the token off; then any program on the machine can create requests.
 - **No browsers:** `/mcp` refuses any request that carries a browser `Origin` header (HTTP 403, `{"error":"browser requests are not allowed here"}`), and every request's `Host` header must be one of the gate's own names (`localhost:<port>`, `127.0.0.1:<port>`, `[::1]:<port>` or the host of `--origin`; anything else gets HTTP 421 `{"error":"unknown host"}`). The gate checks the host first, then the `Origin`, then the token. A web page cannot call the tools.
-- **Server info:** the gate reports `{"name": "phygital-key-mcp", "title": "Phygital Key MCP", "version": "0.6.0"}` (the version is always the program's own) and offers one capability, `tools`. The end-to-end check `MCP server names itself phygital-key-mcp with its version` checks the name and version.
+- **Server info:** the gate reports `{"name": "phygital-key-mcp", "title": "Phygital Key MCP", "version": "0.6.1"}` (the version is always the program's own) and offers one capability, `tools`. The end-to-end check `MCP server names itself phygital-key-mcp with its version` checks the name and version.
 - **Protocol:** the gate is built on the official Rust MCP SDK `rmcp` (3.5.1 in `Cargo.lock`). Asked for protocol version 2024-11-05, 2025-03-26, 2025-06-18 or 2025-11-25, it answers with that version; asked for a newer one, it answers `2025-11-25`. A client on the TypeScript SDK 1.32.1 negotiated `2025-11-25`. (Checked again on 0.4.0: asked for `2025-06-18` it answers `2025-06-18`, and asked for `2099-01-01` it answers `2025-11-25`.)
-- **No tool hints:** the tools carry no annotations such as `destructiveHint`. Hints are advice for clients, and the gate does not rely on them: enforcement lives in the verifier's code ([spec](https://github.com/Phygital-Key/phygital-key/blob/main/docs/spec.md) section 10).
+- **Tool hints are advice only:** each tool carries a `title` and the hints `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` (only `get_approval` is read only; `cancel_approval` is marked destructive, because a revoke can't be undone). Clients may use them to decide when to ask the person; the gate does not rely on them: enforcement lives in the verifier's code ([spec](https://github.com/Phygital-Key/phygital-key/blob/main/docs/spec.md) section 10).
 
 Setup for each AI app is on [Connect your AI](connect-your-ai.md).
 
@@ -131,7 +131,7 @@ There is no `revoked` status: a revoked standing approval reads `cancelled`, and
 
 Ask a person to approve one exact action. Returns at once with `status: pending` and the approval page link, unless the client supports URL-mode elicitation (then it returns once the client has answered the prompt; see [URL-mode elicitation](#url-mode-elicitation)).
 
-Tool description: `Ask a person to approve one exact action with their passkey, fingerprint or hardware key. Returns an id and a link. Then call get_approval.`
+Tool description: `Ask a person to approve one exact action with their passkey, fingerprint or hardware key. Returns an id and approve_url, not the decision: then call get_approval. For many similar actions, use request_standing_approval. Nothing is approved until the person signs.`
 
 | Name | Type | Required | Rules |
 |---|---|---|---|
@@ -194,7 +194,7 @@ The gate can also return a file or system error text if it cannot write its audi
 
 Wait for the person's decision. It returns as soon as the status leaves `pending`, or when `wait_seconds` run out.
 
-Tool description: `Wait for the person's decision on a request. Returns status (pending, approved, denied, cancelled, expired) and, when approved, the approval string to send with the action.`
+Tool description: `Wait for the person's decision on a request. Returns status: pending (call again), approved (with the approval string to send with the action), denied, cancelled or expired (then do not act). Changes nothing; safe to call again.`
 
 | Name | Type | Required | Rules |
 |---|---|---|---|
@@ -263,7 +263,7 @@ Errors:
 
 Withdraw a request that is still `pending`, or revoke an approved standing approval.
 
-Tool description: `Withdraw a request that is still waiting, or revoke an approved standing approval.`
+Tool description: `Withdraw a request that is still waiting, or revoke an approved standing approval. Cannot be undone. A revoke stops new uses at once and returns sign_url: show it to the person, so services refuse the standing approval too.`
 
 | Name | Type | Required | Rules |
 |---|---|---|---|
@@ -325,7 +325,7 @@ Guards in the revoke path that a correct call does not reach: `Only an approved 
 
 After the service acted, pass back its signed receipt, so the person sees "The service reported: done." on the approval page. The gate records a receipt only if it is signed by the receipt key pinned for that service (`phygital-key-mcp trust-service`; the demo pins its own). The agent carries receipts, so an unchecked one would prove nothing ([receipts](https://github.com/Phygital-Key/phygital-key/blob/main/docs/receipts.md)).
 
-Tool description: `After acting, pass back the service's signed receipt for an approval, so the person can see it was done.`
+Tool description: `After the service acted, pass back the signed receipt it returned, so the person sees it was done. Only records it: one per approval, or per use of a standing approval. If no receipt key is pinned for that service, tell the person and don't retry.`
 
 | Name | Type | Required | Rules |
 |---|---|---|---|
@@ -368,7 +368,7 @@ Errors:
 
 Ask the person once for permission to do the same kind of action a few times, within fixed limits, for a few days. Each use then needs no new touch. The person sees every limit on the page and can revoke at any time. Standing approvals are always level `high`, whatever the service asks.
 
-Tool description: `Ask a person once for a standing approval: the same kind of action, within fixed limits, a few times, for a few days. Each use then needs no new approval. Use sparingly; the person sees every limit.`
+Tool description: `Ask a person once to allow the same kind of action within fixed limits, up to max_uses times, for up to days days. Then call get_approval, and use_standing_approval for each action. For one action, use request_approval. Use sparingly: the person sees every limit.`
 
 | Name | Type | Required | Rules |
 |---|---|---|---|
@@ -448,7 +448,7 @@ Every error of `request_approval` except the two reserved-type errors can also c
 
 Use an approved standing approval for one exact request inside its limits. The gate checks the limits, signs a use token with the standing approval's use key and counts the use. Send both strings to the service with that exact request.
 
-Tool description: ``Use an approved standing approval for one exact request inside its limits. Returns `approval` and `use_token`: send both to the service (headers Phygital-Approval and Phygital-Use).``
+Tool description: ``Use an approved standing approval for one exact request inside its limits. Counts one use and returns `approval` and `use_token`: send both with that request (headers Phygital-Approval and Phygital-Use). The token works once, within 60 seconds.``
 
 | Name | Type | Required | Rules |
 |---|---|---|---|
