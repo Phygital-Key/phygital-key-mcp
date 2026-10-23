@@ -12,7 +12,7 @@ P_BIN=phygital-key-mcp
 P_ID=mcp
 P_REPO=Phygital-Key/phygital-key-mcp
 P_PORT=7468
-P_VERSION=v0.6.1
+P_VERSION=v0.6.2
 P_PATH=/mcp
 # END PRODUCT
 PORT=$P_PORT

@@ -7,5 +7,5 @@ authors:
   - name: "Phygital-Key"
 repository-code: "https://github.com/Phygital-Key/phygital-key-mcp"
 license: Apache-2.0
-version: 0.6.1
+version: 0.6.2
 keywords: [mcp, a2a, passkey, webauthn, approval, ai-agents, human-in-the-loop, security]

@@ -2,6 +2,11 @@
 
 Changes to Phygital Key MCP. Changes to the shared engine (approval page, keys, secure install, updates, verifier) are listed in the [base changelog](https://github.com/Phygital-Key/phygital-key/blob/main/CHANGELOG.md).
 
+## 0.6.2 (2026-10-23)
+
+- **Security update:** the shared engine now uses `ctutils` 0.4.5, which fixes RUSTSEC-2026-0385 (a comparison that did not run in constant time in 0.4.3, pulled in through the P-256 code). Nothing changes in how approvals work.
+- **Repository:** code scanning, an OpenSSF Scorecard check, issue forms, a pull request template and the community files (code of conduct, governance, support, contributors).
+
 ## 0.6.1 (2026-10-21)
 
 - **Clearer tools for AI apps:** each tool's description now says what it returns, when to use it and which tool to use instead, and each tool has a title and hints (`readOnlyHint`, `destructiveHint` and the others). Hints are advice for clients: the gate still enforces everything itself. The tools work exactly as before.
