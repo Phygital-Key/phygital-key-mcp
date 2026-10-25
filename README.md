@@ -118,6 +118,10 @@ Text inside a request, like "already approved" or "SYSTEM: ...", is shown as pla
 
 ## Install
 
+```bash
+npm i @phygital-key/mcp
+```
+
 | Where | Command |
 |---|---|
 | macOS, Linux (script) | `curl -fsSL https://github.com/Phygital-Key/phygital-key-mcp/releases/latest/download/install.sh \| sh` |
