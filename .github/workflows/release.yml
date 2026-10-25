@@ -156,7 +156,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes --title "$GITHUB_REF_NAME" \
             dist/phygital-key-mcp-* dist/release.txt dist/release.txt.sig dist/release2.txt* src/install.sh src/install-service.sh
 
-  # npm: phygital-key-mcp (the launcher, `npx -y phygital-key-mcp stdio`) and one
+  # npm: @phygital-key/mcp (the launcher, `npx -y @phygital-key/mcp stdio`) and one
   # package per target holding this release's program. npm trusts this workflow
   # through trusted publishing (with provenance), so no npm token is stored anywhere.
   npm:

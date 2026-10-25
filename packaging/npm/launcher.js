@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// `npx phygital-key-mcp ...` starts the released program built for this computer.
+// `npx @phygital-key/mcp ...` starts the released program built for this computer.
 // npm installs only the matching one of the optional packages listed in package.json
-// (phygital-key-mcp-darwin-arm64 and the rest); this file finds it and runs it.
+// (@phygital-key/mcp-darwin-arm64 and the rest); this file finds it and runs it.
 "use strict";
 
 const { spawn } = require("node:child_process");
 
 const BIN = "phygital-key-mcp";
-const pkg = `${BIN}-${process.platform}-${process.arch}`;
+const pkg = `@phygital-key/mcp-${process.platform}-${process.arch}`;
 const exe = process.platform === "win32" ? `${BIN}.exe` : BIN;
 
 let path;
