@@ -131,7 +131,7 @@ Text inside a request, like "already approved" or "SYSTEM: ...", is shown as pla
 
 The first release under this name was v0.4.0. Each release has files for Linux, macOS and Windows, the public container image `ghcr.io/phygital-key/phygital-key-mcp` (`linux/amd64`, `linux/arm64`), the Homebrew formula and the Scoop manifest.
 
-The npm package `@phygital-key/mcp` runs the same released program: npm installs only the one built for your computer (`@phygital-key/mcp-darwin-arm64` and the rest), and the release workflow publishes them with npm provenance. Update it with npm (`npm install -g @phygital-key/mcp@latest`).
+The npm package `@phygital-key/mcp` runs the same released program: it holds the build for each computer (macOS, Linux, Windows) and starts the one for yours. The release workflow publishes it with npm provenance. Update it with npm (`npm install -g @phygital-key/mcp@latest`).
 
 The script downloads the latest release for your computer and checks two things before it installs anything. First, that the release's file list (`release2.txt`) is signed by a release key built into the script, and is still in date. Second, that the download matches its SHA-256. Then it writes one file, `~/.local/bin/phygital-key-mcp`. It needs `curl`, `tar` and `openssl`. To update later: `phygital-key-mcp update`.
 

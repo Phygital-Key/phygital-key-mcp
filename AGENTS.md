@@ -35,7 +35,7 @@ tests/e2e/browsers.mjs           the approval page in Firefox and WebKit (16 che
 tests/e2e/abuse.mjs              floods, huge and slow requests, idle connections (16 checks)
 tests/e2e/package.json, package-lock.json   pinned MCP SDK and Playwright
 packaging/container/Dockerfile   ghcr.io/phygital-key/phygital-key-mcp: distroless cc-debian12:nonroot (pinned by digest), uid 65532, data in /data
-packaging/npm/                   build.sh makes the npm packages from a release's archives (the launcher @phygital-key/mcp and one package per target), publish.sh publishes them
+packaging/npm/                   build.sh makes the npm package @phygital-key/mcp from a release's archives (a launcher and the program for each target), publish.sh publishes it
 .github/workflows/ci.yml         CI on every push to main, every pull request, and when the sync starts it
 .github/workflows/release.yml    on a v* tag: test, build 5 targets, attest, sign release.txt and release2.txt (P-256, and ML-DSA-65 once pinned), publish, then npm and the container
 .github/workflows/sync-base.yml  daily: move to the base's latest main commit, test, push, start CI
