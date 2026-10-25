@@ -124,11 +124,14 @@ Text inside a request, like "already approved" or "SYSTEM: ...", is shown as pla
 | macOS, Linux (Homebrew) | `brew install phygital-key/tap/phygital-key-mcp` |
 | Windows (Scoop) | `scoop bucket add phygital-key-mcp https://github.com/Phygital-Key/phygital-key-mcp` then `scoop install phygital-key-mcp` |
 | Anywhere with Rust | `cargo install --locked --git https://github.com/Phygital-Key/phygital-key-mcp phygital-key-mcp` |
+| Anywhere with Node.js (npm) | `npx -y @phygital-key/mcp stdio`, or `npm install -g @phygital-key/mcp` |
 | Server (Docker) | `docker run -d --name phygital-key-mcp -p 127.0.0.1:7468:7468 -v phygital-key-mcp:/data ghcr.io/phygital-key/phygital-key-mcp:latest` |
 | Secure install (macOS, Linux) | See [out of the AI's reach](#out-of-the-ais-reach) |
 | By hand | Download from [Releases](https://github.com/Phygital-Key/phygital-key-mcp/releases). Each file has a `.sha256` next to it, and the signed lists `release.txt` and `release2.txt` give every file's SHA-256 |
 
 The first release under this name was v0.4.0. Each release has files for Linux, macOS and Windows, the public container image `ghcr.io/phygital-key/phygital-key-mcp` (`linux/amd64`, `linux/arm64`), the Homebrew formula and the Scoop manifest.
+
+The npm package `@phygital-key/mcp` runs the same released program: it holds the build for each computer (macOS, Linux, Windows) and starts the one for yours. The release workflow publishes it with npm provenance. Update it with npm (`npm install -g @phygital-key/mcp@latest`).
 
 The script downloads the latest release for your computer and checks two things before it installs anything. First, that the release's file list (`release2.txt`) is signed by a release key built into the script, and is still in date. Second, that the download matches its SHA-256. Then it writes one file, `~/.local/bin/phygital-key-mcp`. It needs `curl`, `tar` and `openssl`. To update later: `phygital-key-mcp update`.
 
